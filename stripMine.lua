@@ -473,13 +473,13 @@ local function printHelp()
 	textutils.pagedPrint( [=[
 Valid arguments:
 
-[placeTorches[=true/false]]:
+[placeTorches[=false]]:
 Place torches or not, default is true
 
 [torchSpacing=<spacing>]
 Sets the torch spacing to <spacing> being > 0
 
-[emptyAtEnd[=true/false]]:
+[emptyAtEnd[=false]]:
 Empty the inventory at end of mining, default is true
 
 [chest[=true]]:
@@ -491,7 +491,7 @@ Places a drawer and empties junk items into it
 [shulker[=true]]:
 Places a shulker and empties items into it whenever inventory is full. Shulker box is picked up again afterwards
 
-[placePlatform[=true/false]]:
+[placePlatform[=false]]:
 Places blocks whenever there is no solid block below, default is true]=] )
 end
 -- Functions --
@@ -514,13 +514,12 @@ if tArgs.chest and tArgs.shulker then
 	error( "Chest and Shulker options are mutually exclusive!" )
 end
 
-if tArgs.placeTorches ~= false then
-	tArgs.placeTorches = true
-end
+-- Only false if specified to be false
+tArgs.placeTorches = tArgs.placeTorches ~= false
 
-if tArgs.emptyAtEnd ~= false then
-	tArgs.emptyAtEnd = true
-end
+tArgs.placePlatform = tArgs.placePlatform ~= false
+
+tArgs.emptyAtEnd = tArgs.emptyAtEnd ~= false
 
 if not tArgs.chest then
 	tSlot.chestSlot = nil
@@ -537,7 +536,7 @@ end
 if type( tArgs.torchSpacing ) == "number" then
 	tArgs.torchSpacing = tArgs.torchSpacing > 0 or 12
 else
-	tArgs.torchSpacing = 12
+	tArgs.torchSpacing = 12 -- 12 is the optimal spacing so the light level is at least 8
 end
 
 for k, v in pairs( tSlot ) do
