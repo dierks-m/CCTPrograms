@@ -95,19 +95,19 @@ end
 
 local function findNextEmptySlot( nCurrentPosition )
 	local bFoundSlot
-	local tItemDetail = turtle.getItemDetail( nCurrentPosition )
 
 	while not bFoundSlot and nCurrentPosition < 17 do
 		bFoundSlot = true
 
 		for _, v in pairs( tSlot ) do
 			if v == nCurrentPosition then
+				-- This slot is occupied for other purposes
 				bFoundSlot = false
 				break
 			end
 		end
 
-		if bFoundSlot and turtle.getItemCount( nCurrentPosition ) then
+		if bFoundSlot and turtle.getItemCount( nCurrentPosition ) > 0 then
 			bFoundSlot = false
 		end
 
@@ -194,8 +194,12 @@ local function placeBlock()
 		return false
 	end
 
-	while turtle.getItemCount() == 0 and not findMaterial( tArgs.material ) do
-		userInput( "No blocks found" )
+	local tItemDetail = turtle.getItemDetail()
+
+	if not tItemDetail or tItemDetail.name ~= tArgs.material then
+		while not findMaterial( tArgs.material ) do
+			userInput( "No blocks found" )
+		end
 	end
 
 	while not turtle.placeDown() do
