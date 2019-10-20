@@ -1,6 +1,5 @@
 -- Variables --
 local tProgram		=	{
-	torchSpacing		=	12,
 	availableSlots		=	16,
 	fuelLevel			=	512,
 	invCheckInterval	=	10,
@@ -14,44 +13,29 @@ local tProgram		=	{
 		[ "minecraft:granite" ] = true,
 		[ "minecraft:diorite" ] = true,
 		[ "minecraft:andesite" ] = true,
-	},
-
-	drawerNames			=	{
-		[ "storagedrawers:oak_full_drawers_4" ]			=	true,
-		[ "storagedrawers:birch_full_drawers_4" ]		=	true,
-		[ "storagedrawers:spruce_full_drawers_4" ]		=	true,
-		[ "storagedrawers:acacia_full_drawers_4" ]		=	true,
-		[ "storagedrawers:jungle_full_drawers_4" ]		=	true,
-		[ "storagedrawers:dark_oak_full_drawers_4" ]	=	true,
-	},
-
-	shulkerNames		=	{
-		[ "minecraft:shulker_box" ]						=	true,
-		[ "minecraft:white_shulker_box" ]				=	true,
-		[ "minecraft:orange_shulker_box" ]				=	true,
-		[ "minecraft:magenta_shulker_box" ]				=	true,
-		[ "minecraft:light_blue_shulker_box" ]			=	true,
-		[ "minecraft:yellow_shulker_box" ]				=	true,
-		[ "minecraft:lime_shulker_box" ]				=	true,
-		[ "minecraft:pink_shulker_box" ]				=	true,
-		[ "minecraft:gray_shulker_box" ]				=	true,
-		[ "minecraft:light_gray_shulker_box" ]			=	true,
-		[ "minecraft:cyan_shulker_box" ]				=	true,
-		[ "minecraft:purple_shulker_box" ]				=	true,
-		[ "minecraft:blue_shulker_box" ]				=	true,
-		[ "minecraft:brown_shulker_box" ]				=	true,
-		[ "minecraft:green_shulker_box" ]				=	true,
-		[ "minecraft:red_shulker_box" ]					=	true,
-		[ "minecraft:black_shulker_box" ]				=	true,
-		[ "ironshulkerbox:crystal_shulker_box_white" ]	=	true,
 	}
 }
 
+local tChestNames = {
+	[ "minecraft:chest" ]			=	true,
+	[ "minecraft:trapped_chest" ]	=	true,
+	[ "ironchest:iron_chest" ]		=	true,
+	[ "ironchest:gold_chest" ]		=	true,
+	[ "ironchest:diamond_chest" ]	=	true,
+	[ "ironchest:copper_chest" ]	=	true,
+	[ "ironchest:silver_chest" ]	=	true,
+	[ "ironchest:crystal_chest" ]	=	true,
+	[ "ironchest:obsidian_chest" ]	=	true
+}
+
+local sDrawerName
+local sShulkerName
+
 local tSlot			=	{
-	chestSlot		=	15,
-	torchSlot		=	16,
-	drawerSlot		=	15,
-	shulkerSlot		=	14
+	chest		=	15,
+	torch		=	16,
+	drawer		=	15,
+	shulker		=	14
 }
 
 local tDrawerContent	=	{
@@ -223,7 +207,7 @@ local function placePlatform()
 end
 
 local function compressStacks()
-	local bSlotOccupied -- True if the slot is otherwise used (chest, torch, etc.)
+	local bSlotForbidden -- True if the slot is otherwise used (chest, torch, etc.)
 	local bSlotSelected -- True if slot from which items are transferred away is selected
 	local nTransferToIndex = 1
 	local vItemDetailFrom, vItemDetailTo
@@ -231,12 +215,12 @@ local function compressStacks()
 	for i = 2, 16 do
 		for k, v in pairs( tSlot ) do
 			if i == v then
-				bSlotOccupied = true
+				bSlotForbidden = true
 				break
 			end
 		end
 
-		if not bSlotOccupied then
+		if not bSlotForbidden then
 			vItemDetailFrom = turtle.getItemDetail( i )
 
 			while turtle.getItemCount( i ) > 0 do
@@ -268,9 +252,9 @@ local function compressStacks()
 end
 
 local function placeChest()
-	local bPlaceChest = tArgs.chest and turtle.getItemCount( tSlot.chestSlot ) > 0 and turtle.getItemDetail( tSlot.chestSlot )["name"] == "minecraft:chest"
-	local bPlaceDrawer = tArgs.drawer and turtle.getItemCount( tSlot.drawerSlot ) > 0 and tProgram.drawerNames[ turtle.getItemDetail( tSlot.drawerSlot )["name"] ]
-	local bPlaceShulker = tArgs.shulker and turtle.getItemCount( tSlot.shulkerSlot ) > 0 and tProgram.shulkerNames[ turtle.getItemDetail( tSlot.shulkerSlot )["name"] ]
+	local bPlaceChest = tArgs.chest and turtle.getItemCount( tSlot.chest ) > 0 and turtle.getItemDetail( tSlot.chest )["name"] == "minecraft:chest"
+	local bPlaceDrawer = tArgs.drawer and turtle.getItemCount( tSlot.drawer ) > 0 and turtle.getItemDetail( tSlot.drawer )["name"] == sDrawerName
+	local bPlaceShulker = tArgs.shulker and turtle.getItemCount( tSlot.shulker ) > 0 and turtle.getItemDetail( tSlot.shulker )["name"] == sShulkerName
 
 	if not ( bPlaceChest or bPlaceDrawer or bPlaceShulker ) then
 		return false
@@ -286,12 +270,12 @@ local function placeChest()
 
 	if bPlaceChest then
 		dig( "down" )
-		turtle.select( tSlot.chestSlot )
+		turtle.select( tSlot.chest )
 		turtle.placeDown()
 	end
 
 	if bPlaceDrawer then
-		turtle.select( tSlot.drawerSlot )
+		turtle.select( tSlot.drawer )
 		turtle.placeUp()
 	end
 
@@ -302,7 +286,7 @@ local function placeChest()
 		end
 
 		dig( "forward" )
-		turtle.select( tSlot.shulkerSlot )
+		turtle.select( tSlot.shulker )
 		turtle.place()
 	end
 
@@ -360,7 +344,7 @@ local function placeChest()
 	end
 
 	if bPlaceShulker then
-		turtle.select( tSlot.shulkerSlot )
+		turtle.select( tSlot.shulker )
 
 		if turtle.getItemCount() > 0 then
 			-- Maybe inventory was full and an item landed here anyway
@@ -371,7 +355,7 @@ local function placeChest()
 	end
 
 	if bPlaceDrawer then
-		turtle.select( tSlot.drawerSlot )
+		turtle.select( tSlot.drawer )
 
 		if turtle.getItemCount() > 0 then
 			-- Maybe inventory was full and an item landed here anyway
@@ -419,7 +403,7 @@ local function checkInventory( bPlacedChest )
 end
 
 local function placeTorch()
-	local item = turtle.getItemDetail( tSlot.torchSlot )
+	local item = turtle.getItemDetail( tSlot.torch )
 
 	if not item or item.name ~= "minecraft:torch" then
 		return false
@@ -428,7 +412,7 @@ local function placeTorch()
 	local nSelectedSlot
 
 	nSelectedSlot = turtle.getSelectedSlot()
-	turtle.select( tSlot.torchSlot )
+	turtle.select( tSlot.torch )
 	move( "up" )
 	turtle.placeDown()
 	turtle.select( nSelectedSlot )
@@ -521,16 +505,28 @@ tArgs.placePlatform = tArgs.placePlatform ~= false
 
 tArgs.emptyAtEnd = tArgs.emptyAtEnd ~= false
 
-if not tArgs.chest then
-	tSlot.chestSlot = nil
+if tArgs.chest ~= true then
+	tSlot.chest = nil
 end
 
-if not tArgs.drawer then
-	tSlot.drawerSlot = nil
+if tArgs.drawer ~= true then
+	tSlot.drawer = nil
+else
+	local tDrawerDetail = turtle.getItemDetail( tSlot.drawer )
+
+	if tDrawerDetail and tDrawerDetail:match( "_drawers_[124]") then
+		sDrawerName = tDrawerDetail.name
+	end
 end
 
-if not tArgs.shulker then
-	tSlot.shulkerSlot = nil
+if tArgs.shulker ~= true then
+	tSlot.shulker = nil
+else
+	local tShulkerDetail = turtle.getItemDetail( tSlot.shulker )
+
+	if tShulkerDetail and tShulkerDetail.name:match( "shulker_box" ) then
+		sShulkerName = tShulkerDetail.name
+	end
 end
 
 if type( tArgs.torchSpacing ) == "number" then
