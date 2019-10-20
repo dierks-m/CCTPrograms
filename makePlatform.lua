@@ -224,6 +224,7 @@ local function drawerCleanup()
 			if not bPlacedDrawer then
 				turtle.select( tSlot.storage )
 				turtle.placeUp()
+				bPlacedDrawer = true
 			end
 
 			turtle.select( i )
