@@ -1,21 +1,98 @@
 -- Variables --
-local tArgs = { ... }
-local nWidth, nLength
-local sInvName
+local tProgram		=	{
+	availableSlots		=	16,
+	fuelLevel			=	512,
+	invCheckInterval	=	10,
 
-local tSlot = {
-	storage		=	16,
+	placeChests			=	false,
+
+	platformWhitelist	=	{
+		[ "minecraft:cobblestone" ] = true,
+		[ "minecraft:stone" ] = true,
+		[ "minecraft:dirt" ] = true,
+		[ "minecraft:granite" ] = true,
+		[ "minecraft:diorite" ] = true,
+		[ "minecraft:andesite" ] = true,
+	}
 }
 
-local nAvailableSlots = 16
-local nPlacedBlocks = 0
-local nNeededBlocks = 0
+local tChestNames = {
+	[ "minecraft:chest" ]			=	true,
+	[ "minecraft:trapped_chest" ]	=	true,
+	[ "ironchest:iron_chest" ]		=	true,
+	[ "ironchest:gold_chest" ]		=	true,
+	[ "ironchest:diamond_chest" ]	=	true,
+	[ "ironchest:copper_chest" ]	=	true,
+	[ "ironchest:silver_chest" ]	=	true,
+	[ "ironchest:crystal_chest" ]	=	true,
+	[ "ironchest:obsidian_chest" ]	=	true
+}
 
+local sDrawerName
+local sShulkerName
+
+local tSlot			=	{
+	chest		=	15,
+	torch		=	16,
+	drawer		=	15,
+	shulker		=	14
+}
+
+local tDrawerContent	=	{
+	[ "minecraft:cobblestone" ]	=	true,
+	[ "minecraft:diorite" ]		=	true,
+	[ "minecraft:andesite" ]	=	true,
+	[ "minecraft:gravel" ]		=	true,
+	--[ "minecraft:granite" ]		=	true
+}
+
+local tArgs			=	{ ... }
+
+local xSize, ySize = term.getSize()
+local nXSpace = xSize - 7
 local nInitialCursorX, nInitialCursorY = term.getCursorPos()
+
+local tInspectMapping = {
+	up		=	"inspectUp",
+	down	=	"inspectDown",
+	forward	=	"inspect"
+}
 -- Variables --
 
 
 -- Functions --
+local function dig( sDirection )
+	--[[
+		sDirection	-	Direction in which to dig, possible directions:
+			forward, up, down
+	]]--
+
+	local bIsBlock, tBlock = turtle[ tInspectMapping[ sDirection ] ]()
+
+	if not bIsBlock then
+		return false
+	end
+
+	while sDirection == "up" and turtle.detectUp() or
+		sDirection == "down" and turtle.detectDown() or
+		sDirection == "forward" and turtle.detect() do
+
+		if sDirection == "up" then
+			turtle.digUp()
+		elseif sDirection == "down" then
+			turtle.digDown()
+		elseif sDirection == "forward" then
+			turtle.dig()
+		end
+
+		if tBlock.name == "minecraft:gravel" or tBlock.name == "minecraft:sand" then
+			sleep( 0.25 )
+		end
+	end
+
+	return true
+end
+
 local function userInput( sMessage )
 	local nXSize, nYSize = term.getSize()
 	local tEvent
@@ -32,6 +109,14 @@ local function userInput( sMessage )
 	end
 
 	term.clearLine()
+end
+
+local function printProgress( nCurrentBlock )
+	term.setCursorPos( 1, ySize )
+
+	local str = "Block " .. nCurrentBlock .. " out of " .. tArgs.length
+
+	term.write( str )
 end
 
 local function refuel( nFuelLevel )
@@ -85,162 +170,256 @@ local function move( sDirection )
 	end
 
 	if turtle.getFuelLevel() < 1 then
-		refuel( 512 )
+		refuel( tProgram.fuelLevel )
 	end
 
 	while not turtle[ sDirection ]() do
-		sleep( 5 )
+		if sDirection == "back" or not dig( sDirection ) then
+			if sDirection == "forward" and not turtle.attack() or
+			sDirection == "down" and not turtle.attackDown() or
+			sDirection == "up" and not turtle.attackUp() then
+				sleep( 1 )
+			end
+		end
 	end
 end
 
-local function findNextEmptySlot( nCurrentPosition )
-	local bFoundSlot
-
-	while not bFoundSlot and nCurrentPosition < 17 do
-		bFoundSlot = true
-
-		for _, v in pairs( tSlot ) do
-			if v == nCurrentPosition then
-				-- This slot is occupied for other purposes
-				bFoundSlot = false
-				break
-			end
-		end
-
-		if bFoundSlot and turtle.getItemCount( nCurrentPosition ) > 0 then
-			bFoundSlot = false
-		end
-
-		if bFoundSlot then
-			return nCurrentPosition
-		else
-			nCurrentPosition = nCurrentPosition + 1
-		end
-	end
-
-	-- We went through all slots and found no suitable one (nCurrentPosition > 16)
-	return false
-end
-
-local function findMaterial( sMaterial )
-	local tItemDetail
-	local nFirstEmptySlot
-
-	for i = 1, 16 do
-		tItemDetail = turtle.getItemDetail( i )
-
-		if tItemDetail and tItemDetail.name == sMaterial then
-			turtle.select( i )
-			return true
-		elseif tArgs.useStorage and not tItemDetail and not nFirstEmptySlot then
-			-- First free slot items would go into when sucking from drawer
-			nFirstEmptySlot = i
-		end
-	end
-
-	if tArgs.useStorage then
-		tItemDetail = turtle.getItemDetail( tSlot.storage )
-
-		if not tItemDetail or tItemDetail.name ~= sInvName then
-			-- No storage available
-			return false
-		end
-
-		turtle.select( tSlot.storage )
-		turtle.placeUp()
-
-		local nItemAmount = math.min( nAvailableSlots*64, nNeededBlocks-nPlacedBlocks )
-		local nCurrentTargetSlot = nFirstEmptySlot
-
-		while nCurrentTargetSlot and nItemAmount > 0 do
-			-- Make sure the items don't go into a reserved slot (could be in middle of inventory)
-			turtle.select( nCurrentTargetSlot )
-
-			if not turtle.suckUp( math.min( 64, nItemAmount ) ) then
-				-- Drawer empty
-				break
-			end
-
-			tItemDetail = turtle.getItemDetail( nCurrentTargetSlot )
-
-			if tItemDetail.name ~= sMaterial then
-				-- Drawer contained the wrong items
-				turtle.dropUp()
-				break
-			else
-				nItemAmount = nItemAmount - tItemDetail.count
-			end
-
-			nCurrentTargetSlot = findNextEmptySlot( nCurrentTargetSlot )
-		end
-
-		turtle.select( tSlot.storage )
-		turtle.digUp()
-		turtle.select( nFirstEmptySlot )
-
-		-- We retrieved at least some items
-		if not nCurrentTargetSlot or nCurrentTargetSlot > nFirstEmptySlot then
-			return true
-		end
-	end
-
-	-- Either no items were found or the drawer contained the wrong items
-	return false
-end
-
-local function placeBlock()
+local function placePlatform()
 	if turtle.detectDown() then
-		nNeededBlocks = nNeededBlocks - 1
-		return false
-	end
-
-	local tItemDetail = turtle.getItemDetail()
-
-	if not tItemDetail or tItemDetail.name ~= tArgs.material then
-		while not findMaterial( tArgs.material ) do
-			userInput( "No blocks found" )
-		end
-	end
-
-	while not turtle.placeDown() do
-		if not turtle.attackDown() and not turtle.attack() then
-			sleep( 1 )
-		end
-	end
-
-	return true
-end
-
-local function drawerCleanup()
-	local nSelectedSlot = turtle.getSelectedSlot()
-	local tItemDetail = turtle.getItemDetail( tSlot.storage )
-	local bPlacedDrawer = false
-
-	if not tItemDetail or tItemDetail.name ~= sInvName then
 		return
 	end
 
-	for i = 1, 16 do
-		tItemDetail = turtle.getItemDetail( i )
+	local tCurrentItem
 
-		if tItemDetail and tItemDetail.name == tArgs.material then
-			-- Only bother placing drawer when there are actually items to clean up
-			if not bPlacedDrawer then
-				turtle.select( tSlot.storage )
-				turtle.placeUp()
-				bPlacedDrawer = true
+	for i = 1, 16 do
+		tCurrentItem = turtle.getItemDetail( i )
+
+		if tCurrentItem and tProgram.platformWhitelist[ tCurrentItem.name ] then
+			if i ~= turtle.getSelectedSlot() then
+				turtle.select( i )
 			end
 
-			turtle.select( i )
-			turtle.dropUp()
+			break
 		end
 	end
 
-	if bPlacedDrawer then
-		turtle.select( tSlot.storage )
-		turtle.digUp()
-		turtle.select( nSelectedSlot )
+	turtle.placeDown()
+end
+
+local function compressStacks()
+	local bSlotForbidden -- True if the slot is otherwise used (chest, torch, etc.)
+	local bSlotSelected -- True if slot from which items are transferred away is selected
+	local nTransferToIndex = 1
+	local vItemDetailFrom, vItemDetailTo
+
+	for i = 2, 16 do
+		for k, v in pairs( tSlot ) do
+			if i == v then
+				bSlotForbidden = true
+				break
+			end
+		end
+
+		if not bSlotForbidden then
+			vItemDetailFrom = turtle.getItemDetail( i )
+
+			while turtle.getItemCount( i ) > 0 do
+				-- We've reached the slot from which we're trying to transfer from
+				if nTransferToIndex == i then
+					break
+				end
+
+				vItemDetailTo = turtle.getItemDetail( nTransferToIndex )
+
+				-- Only if the slot is empty or the item type is the same, bother checking
+				if not vItemDetailTo or vItemDetailFrom.name == vItemDetailTo.name then
+					-- Only select the slot we're transferring *from* if we can actually transfer
+					if not bSlotSelected then
+						turtle.select( i )
+						bSlotSelected = true
+					end
+
+					turtle.transferTo( nTransferToIndex )
+				end
+
+				nTransferToIndex = nTransferToIndex + 1
+			end
+
+			bSlotSelected = false
+			nTransferToIndex = 1
+		end
 	end
+end
+
+local function placeChest()
+	local bPlaceChest = tArgs.chest and turtle.getItemCount( tSlot.chest ) > 0 and turtle.getItemDetail( tSlot.chest )["name"] == "minecraft:chest"
+	local bPlaceDrawer = tArgs.drawer and turtle.getItemCount( tSlot.drawer ) > 0 and turtle.getItemDetail( tSlot.drawer )["name"] == sDrawerName
+	local bPlaceShulker = tArgs.shulker and turtle.getItemCount( tSlot.shulker ) > 0 and turtle.getItemDetail( tSlot.shulker )["name"] == sShulkerName
+
+	if not ( bPlaceChest or bPlaceDrawer or bPlaceShulker ) then
+		return false
+	end
+
+	local bSlotAvailable = true
+	local bSavedJunkItem = false
+	local nSelectedSlot = turtle.getSelectedSlot()
+	local bCompressStacks = bPlaceDrawer and not ( bPlaceChest or bPlaceShulker )
+
+	local nItemCount = 0
+	local nTargetCount = 0
+
+	if bPlaceChest then
+		dig( "down" )
+		turtle.select( tSlot.chest )
+		turtle.placeDown()
+	end
+
+	if bPlaceDrawer then
+		turtle.select( tSlot.drawer )
+		turtle.placeUp()
+	end
+
+	if bPlaceShulker then
+		if bPlaceChest or bPlaceDrawer then
+			-- Otherwise the item dug out would go in the chest slot
+			turtle.select( nSelectedSlot )
+		end
+
+		dig( "forward" )
+		turtle.select( tSlot.shulker )
+		turtle.place()
+	end
+
+	for i = 1, 16 do
+		for k, v in pairs( tSlot ) do
+			if i == v then
+				bSlotAvailable = false
+				break
+			end
+		end
+
+		if bSlotAvailable then
+			nItemCount = turtle.getItemCount( i )
+
+			-- Save some items for building bridges in lava lakes etc.
+			if not bSavedJunkItem then
+				if nItemCount > 0 and tProgram.platformWhitelist[ turtle.getItemDetail( i )["name"] ] then
+					nTargetCount = math.min( 32, nItemCount )
+					bSavedJunkItem = true
+				end
+
+			else
+				nTargetCount = 0
+			end
+
+			-- Only bother selecting slots when there are items (selecting is slow)
+			if nItemCount > 0 then
+				turtle.select( i )
+			end
+
+			if nItemCount > nTargetCount and bPlaceDrawer and tDrawerContent[ turtle.getItemDetail( i )["name"] ] then
+				turtle.dropUp( nItemCount - nTargetCount )
+
+				nItemCount = turtle.getItemCount() -- Maybe not all items could fit
+			end
+
+			if nItemCount > nTargetCount and bPlaceChest then
+				turtle.dropDown( nItemCount - nTargetCount )
+
+				nItemCount = turtle.getItemCount() -- Maybe still some items left
+			end
+
+			if nItemCount > nTargetCount and bPlaceShulker then
+				turtle.drop( nItemCount - nTargetCount )
+			end
+
+			if turtle.getItemCount() > nTargetCount then
+				-- If we couldn't get rid of this stack at all, try and compress it,
+				-- as it may be in a random slot
+				bCompressStacks = true
+			end
+		end
+
+		bSlotAvailable = true
+	end
+
+	if bPlaceShulker then
+		turtle.select( tSlot.shulker )
+
+		if turtle.getItemCount() > 0 then
+			-- Maybe inventory was full and an item landed here anyway
+			turtle.dropDown()
+		end
+
+		turtle.dig()
+	end
+
+	if bPlaceDrawer then
+		turtle.select( tSlot.drawer )
+
+		if turtle.getItemCount() > 0 then
+			-- Maybe inventory was full and an item landed here anyway
+			turtle.dropDown()
+		end
+
+		turtle.digUp()
+	end
+
+	if bCompressStacks then
+		compressStacks()
+	end
+
+	turtle.select( nSelectedSlot )
+end
+
+local function checkInventory( bPlacedChest )
+	local nBlockedSlots = 0
+	local bSlotIgnore = false
+
+	for i = 1, 16 do
+		for k, v in pairs( tSlot ) do
+			if i == v then
+				bSlotIgnore = true
+				break
+			end
+		end
+
+		if not bSlotIgnore and turtle.getItemCount( i ) > 0 then
+			nBlockedSlots = nBlockedSlots + 1
+		end
+
+		bSlotIgnore = false
+	end
+
+	if nBlockedSlots == tProgram.availableSlots then
+		if ( not tArgs.chest and not tArgs.drawer and not tArgs.shulker ) or bPlacedChest then
+			userInput( "Inventory full" )
+			return
+		end
+
+		placeChest()
+		checkInventory( true )
+	end
+end
+
+local function placeTorch()
+	local item = turtle.getItemDetail( tSlot.torch )
+
+	if not item or item.name ~= "minecraft:torch" then
+		return false
+	end
+
+	local nSelectedSlot
+
+	nSelectedSlot = turtle.getSelectedSlot()
+	turtle.select( tSlot.torch )
+	move( "up" )
+	turtle.placeDown()
+	turtle.select( nSelectedSlot )
+	move( "forward" )
+	move( "down" )
+
+	return true
 end
 
 local function parseArgs( tArgs )
@@ -248,9 +427,9 @@ local function parseArgs( tArgs )
 	local sArgName
 	local vArgValue
 
-	for _, sArg in pairs( tArgs ) do
-		sArgName = sArg:match( "[%w_]+" )
-		vArgValue = sArg:match( "[%w_]+%s*=%s*([%w_:%.]+)" )
+	for i = 1, #tArgs do
+		sArgName = tArgs[i]:match( "[%w_]+" )
+		vArgValue = tArgs[i]:match( "[%w_]+%s*=%s*([%w_]+)" )
 
 		if vArgValue then
 			if vArgValue == "true" then
@@ -271,117 +450,131 @@ local function parseArgs( tArgs )
 end
 
 local function printUsage()
-	print( "Usage: " .. shell.getRunningProgram() .. " <width> <length> [args]\n" )
-	print( "Use: " .. shell.getRunningProgram() .. " help\nfor a list of possible arguments" )
+	print( "Usage: " .. shell.getRunningProgram() .. " length=<length> [chest[=true]] [drawer[=true]] [shulker[=true]]" )
 end
 
 local function printHelp()
 	textutils.pagedPrint( [=[
 Valid arguments:
 
-[material=minecraft:stone]:
-Makes the program use stone for building
-If no material is specified, material in slot 1 will be used
+[placeTorches[=false]]:
+Place torches or not, default is true
 
-[drawer=true]
-Makes the program take items out of a drawer in slot 16
+[torchSpacing=<spacing>]
+Sets the torch spacing to <spacing> being > 0
 
-[shulker=true]
-Same as drawer option]=] )
+[emptyAtEnd[=false]]:
+Empty the inventory at end of mining, default is true
+
+[chest[=true]]:
+Places chest in floor whenever the inventory is full
+
+[drawer[=true]]:
+Places a drawer and empties junk items into it
+
+[shulker[=true]]:
+Places a shulker and empties items into it whenever inventory is full. Shulker box is picked up again afterwards
+
+[placePlatform[=false]]:
+Places blocks whenever there is no solid block below, default is true]=] )
 end
 -- Functions --
 
 
 -- Initialisation --
-if tonumber( tArgs[1] ) and tonumber( tArgs[2] ) then
-	nWidth, nLength = tonumber( tArgs[1] ), tonumber( tArgs[2] )
-	nNeededBlocks = nWidth * nLength -- Total amount of blocks needed (estimation)
+tArgs = parseArgs( tArgs )
 
-	if nWidth < 1 or nLength < 1 then
-		print( "Invalid sizing!" )
-		printUsage()
-		return
-	end
-
-	tArgs[1], tArgs[2] = nil, nil
-
-	tArgs = parseArgs( tArgs )
-else
-	tArgs = parseArgs( tArgs )
-
-	if tArgs.help then
-		printHelp()
-		return
-	end
-
-	printUsage()
+if tArgs.help == true then
+	printHelp()
 	return
 end
 
-tArgs.useStorage = tArgs.drawer == true or tArgs.shulker == true
+if type( tArgs.length ) ~= "number" then
+	printUsage()
+	error( "No length given" )
+end
 
-if tArgs.shulker == true then
-	local tShulkerDetail = turtle.getItemDetail( tSlot.storage )
+if tArgs.chest and tArgs.shulker then
+	error( "Chest and Shulker options are mutually exclusive!" )
+end
+
+-- Only false if specified to be false
+tArgs.placeTorches = tArgs.placeTorches ~= false
+
+tArgs.placePlatform = tArgs.placePlatform ~= false
+
+tArgs.emptyAtEnd = tArgs.emptyAtEnd ~= false
+
+if tArgs.chest ~= true then
+	tSlot.chest = nil
+end
+
+if tArgs.drawer ~= true then
+	tSlot.drawer = nil
+else
+	local tDrawerDetail = turtle.getItemDetail( tSlot.drawer )
+
+	if tDrawerDetail and tDrawerDetail:match( "_drawers_[124]") then
+		sDrawerName = tDrawerDetail.name
+	end
+end
+
+if tArgs.shulker ~= true then
+	tSlot.shulker = nil
+else
+	local tShulkerDetail = turtle.getItemDetail( tSlot.shulker )
 
 	if tShulkerDetail and tShulkerDetail.name:match( "shulker_box" ) then
-		tInvName = tShulkerDetail.name
+		sShulkerName = tShulkerDetail.name
 	end
 end
 
-if tArgs.drawer == true then
-	local tDrawerDetail = turtle.getItemDetail( tSlot.storage )
-
-	if tDrawerDetail and tDrawerDetail.name:match( "full_drawers_1" ) then
-		sInvName = tDrawerDetail.name
-	end
+if type( tArgs.torchSpacing ) == "number" then
+	tArgs.torchSpacing = tArgs.torchSpacing > 0 or 12
+else
+	tArgs.torchSpacing = 12 -- 12 is the optimal spacing so the light level is at least 8
 end
 
-if not tArgs.material then
-	local tMaterial = turtle.getItemDetail( 1 )
-
-	if tMaterial then
-		tArgs.material = tMaterial.name
-	else
-		print( "No material in slot 1 found!" )
-		return
-	end
+for k, v in pairs( tSlot ) do
+	tProgram.availableSlots = tProgram.availableSlots - 1
 end
 
-for _ in pairs( tSlot ) do
-	nAvailableSlots = nAvailableSlots - 1
-end
+term.setCursorPos( 1, ySize )
+term.clearLine()
 -- Initialisation --
 
 
 -- Main Program --
-for x = 1, nWidth do
-	for y = 1, nLength do
-		if placeBlock() then
-			nPlacedBlocks = nPlacedBlocks + 1
-		end
+local bTravelledBlock = false
 
-		if y < nLength then
-			move( "forward" )
-		end
+for i = 1, tArgs.length do
+	printProgress( i )
+
+	if tArgs.placeTorches == true and ( i-2 ) % ( tArgs.torchSpacing+1 ) == 0 then
+		bTravelledBlock = placeTorch()
 	end
 
-	if x < nWidth then
-		if x % 2 == 0 then
-			move( "left" )
-			move( "forward" )
-			move( "left" )
-		else
-			move( "right" )
-			move( "forward" )
-			move( "right" )
-		end
+	if ( i-2 ) % ( tProgram.invCheckInterval+1 ) == 0 then
+		checkInventory()
 	end
+
+	if not bTravelledBlock then
+		move( "forward" )
+		dig( "up" )
+	end
+
+	if tArgs.placePlatform == true then
+		placePlatform()
+	end
+
+	bTravelledBlock = false
 end
 
-if tArgs.useStorage then
-	drawerCleanup()
+if tArgs.drawer and tArgs.emptyAtEnd then
+	placeChest()
 end
 
+-- Clear up the "Block x of y" and make the cursor not be off-screen
+term.clearLine()
 term.setCursorPos( nInitialCursorX, nInitialCursorY )
-print( "Placed down " .. nPlacedBlocks .. " block" .. ( nPlacedBlocks ~= 1 and "s" or "" ) )
 -- Main Program --
