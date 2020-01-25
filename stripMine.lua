@@ -60,6 +60,12 @@ local tDrawerContent	=	{
 	--[ "minecraft:granite" ]		=	true
 }
 
+-- Restocking drawers or shulker boxes does not make sense as they will not stack
+local tValidRestocks = {
+    chest   =   true,
+    torch   =   true
+}
+
 local tArgs			=	{ ... }
 
 local xSize, ySize = term.getSize()
@@ -313,10 +319,60 @@ local function stock( nSlot, tNames )
     return bRestockedItems
 end
 
+--[[
+    Returns a table of all the items that are in the reserved slots,
+    but only if they already correspond to the list of correct items.
+
+    This way placeChest can only keep items that will fit in the slots later and throw
+    out other suitable items which would not fit now due to being a different kind
+]]
+local function getRestockNames()
+    local tNames = {}
+    local tItem
+    
+    for k, v in pairs(tSlot) do
+        tItem = turtle.getItemDetail(v)
+
+        if tItem and containsName(tItem.name, tSlotStringMapping[k]) and tValidRestocks[k] then
+            tNames[tItem.name] = true
+        end
+    end
+end
+
+--[[
+    Finds the item name for restocking slots with the maximum count in the turtle's inventory
+]]
+local function getMaximumFittingRestock( tNames )
+    local tCounts = {}
+    local tItem
+
+    for i = 1, 16 do
+        tItem = turtle.getItemDetail(i)
+
+        if tItem and containsName(tItem.name, tNames) then
+            if tCounts[tItem.name] then
+                tCounts[tItem.name] = tCounts[tItem.name] + tItem.count
+            else
+                tCounts[tItem.name] = tItem.count
+            end
+        end
+    end
+
+    local sMaxItemName = next(tCounts)
+
+    for k, v in pairs(tCounts) do
+        if v > tCounts[sMaxItemName] then
+            sMaxItemName = k
+        end
+    end
+
+    return sMaxItemName
+end
+
 local function placeChest()
 	local bPlaceChest = tArgs.chest and turtle.getItemCount( tSlot.chest ) > 0 and containsName(turtle.getItemDetail(tSlot.chest)["name"], tChestStrings)
-	local bPlaceDrawer = tArgs.drawer and turtle.getItemCount( tSlot.drawer ) > 0 and containsName(turtle.getItemDetail( tSlot.drawer )["name"], tDrawerStrings)
-	local bPlaceShulker = tArgs.shulker and turtle.getItemCount( tSlot.shulker ) > 0 and containsName(turtle.getItemDetail( tSlot.shulker )["name"], tShulkerStrings)
+	local bPlaceDrawer = tArgs.drawer and turtle.getItemCount( tSlot.drawer ) > 0 and containsName(turtle.getItemDetail(tSlot.drawer)["name"], tDrawerStrings)
+	local bPlaceShulker = tArgs.shulker and turtle.getItemCount( tSlot.shulker ) > 0 and containsName(turtle.getItemDetail(tSlot.shulker)["name"], tShulkerStrings)
 
 	if not ( bPlaceChest or bPlaceDrawer or bPlaceShulker ) then
 		return false
@@ -325,7 +381,6 @@ local function placeChest()
 	local bSlotAvailable = true
 	local bSavedJunkItem = false
 	local nSelectedSlot = turtle.getSelectedSlot()
-	local bCompressStacks = bPlaceDrawer and not ( bPlaceChest or bPlaceShulker )
 
 	local nItemCount = 0
 	local nTargetCount = 0
@@ -352,14 +407,27 @@ local function placeChest()
 		turtle.place()
 	end
 
+    local tReservedItems = getRestockNames()
+    
 	for i = 1, 16 do
 		for k, v in pairs( tSlot ) do
-			if i == v then
-                -- Don't block the slot if there's junk in there
-                local tItem = turtle.getItemDetail(v)
+            -- No items are left at all for this restock slot
+            if turtle.getItemCount(v) == 0 and tValidRestocks[k] then
+                local sMaxItemName = getMaximumFittingRestock(tSlotStringMapping[k])
+
+                if sMaxItemName then
+                    tReservedItems[sMaxItemName] = true
+                end
+            end
+            
+			if tArgs.keepRestocks or i == v then
+                local tItem = turtle.getItemDetail(i)
                 
-				bSlotAvailable = tItem and containsName(tItem.name, tSlotStringMapping[k])
-				break
+				bSlotAvailable = not (tItem and tReservedItems[tItem.name])
+
+                if not bSlotAvailable then
+                    break
+                end
 			end
 		end
 
@@ -430,9 +498,7 @@ local function placeChest()
 		turtle.digUp()
 	end
 
-	if bCompressStacks then
-		compressStacks()
-	end
+	compressStacks()
 
 	turtle.select( nSelectedSlot )
 end
@@ -549,6 +615,9 @@ Sets the torch spacing to <spacing> being > 0
 [stopNoTorches[=false]]:
 Lets the turtle stop if no torches are present, default is true
 
+[keepRestocks[=false]]:
+Keeps items that can restock reserved slots, default is true
+
 [emptyAtEnd[=false]]:
 Empty the inventory at end of mining, default is true
 
@@ -592,6 +661,8 @@ tArgs.stopNoTorches = tArgs.stopNoTorches ~= false
 tArgs.placePlatform = tArgs.placePlatform ~= false
 
 tArgs.emptyAtEnd = tArgs.emptyAtEnd ~= false
+
+tArgs.keepRestocks = tArgs.keepRestocks ~= false
 
 if tArgs.chest ~= true then
 	tSlot.chest = nil
