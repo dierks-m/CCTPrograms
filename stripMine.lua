@@ -355,8 +355,10 @@ local function placeChest()
 	for i = 1, 16 do
 		for k, v in pairs( tSlot ) do
 			if i == v then
-                -- Only block the slot off if it hasn't been stuffed with a junk item
-				bSlotAvailable = containsName(v, tSlotStringMapping[k])
+                -- Don't block the slot if there's junk in there
+                local tItem = turtle.getItemDetail(v)
+                
+				bSlotAvailable = tItem and containsName(tItem.name, tSlotStringMapping[k])
 				break
 			end
 		end
