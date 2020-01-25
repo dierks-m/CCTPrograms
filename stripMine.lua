@@ -337,6 +337,8 @@ local function getRestockNames()
             tNames[tItem.name] = true
         end
     end
+
+    return tNames
 end
 
 --[[
@@ -532,6 +534,8 @@ local function checkInventory( bPlacedChest )
         for k, v in pairs(tSlot) do
             stock(v, tSlotStringMapping[k])
         end
+    else
+        return
     end
 
 	if getBlockedSlots() == tProgram.availableSlots then
