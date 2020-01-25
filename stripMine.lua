@@ -315,7 +315,7 @@ end
 
 local function placeChest()
 	local bPlaceChest = tArgs.chest and turtle.getItemCount( tSlot.chest ) > 0 and containsName(turtle.getItemDetail(tSlot.chest)["name"], tChestStrings)
-	local bPlaceDrawer = tArgs.drawer and turtle.getItemCount( tSlot.drawer ) > 0 and containsName(turtle.getItemDetail( tSlot.drawer )["name"] tDrawerStrings)
+	local bPlaceDrawer = tArgs.drawer and turtle.getItemCount( tSlot.drawer ) > 0 and containsName(turtle.getItemDetail( tSlot.drawer )["name"], tDrawerStrings)
 	local bPlaceShulker = tArgs.shulker and turtle.getItemCount( tSlot.shulker ) > 0 and containsName(turtle.getItemDetail( tSlot.shulker )["name"], tShulkerStrings)
 
 	if not ( bPlaceChest or bPlaceDrawer or bPlaceShulker ) then
