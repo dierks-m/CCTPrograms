@@ -279,7 +279,7 @@ end
     Restocks valid items for given slot with given name patterns
 ]]
 local function stock( nSlot, tNames )
-    local tItem = turtle.getItemDetail(tSlot)
+    local tItem = turtle.getItemDetail(nSlot)
     local sTargetName = tItem and tItem.name
     local nSelectedSlot = turtle.getSelectedSlot()
     local bRestockedItems = false -- Keeps track if items were actually restocked
