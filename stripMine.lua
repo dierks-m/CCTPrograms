@@ -253,7 +253,7 @@ local function compressStacks()
 end
 
 local function placeChest()
-	local bPlaceChest = tArgs.chest and turtle.getItemCount( tSlot.chest ) > 0 and turtle.getItemDetail( tSlot.chest )["name"] == "minecraft:chest"
+	local bPlaceChest = tArgs.chest and turtle.getItemCount( tSlot.chest ) > 0 and tChestNames[turtle.getItemDetail( tSlot.chest )["name"]]
 	local bPlaceDrawer = tArgs.drawer and turtle.getItemCount( tSlot.drawer ) > 0 and turtle.getItemDetail( tSlot.drawer )["name"] == sDrawerName
 	local bPlaceShulker = tArgs.shulker and turtle.getItemCount( tSlot.shulker ) > 0 and turtle.getItemDetail( tSlot.shulker )["name"] == sShulkerName
 
