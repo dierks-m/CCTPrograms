@@ -16,17 +16,23 @@ local tProgram		=	{
 	}
 }
 
-local tChestNames = {
-	[ "minecraft:chest" ]			=	true,
-	[ "minecraft:trapped_chest" ]	=	true,
-    [ "minecraft:barrel" ]          =   true,
-	[ "ironchest:iron_chest" ]		=	true,
-	[ "ironchest:gold_chest" ]		=	true,
-	[ "ironchest:diamond_chest" ]	=	true,
-	[ "ironchest:copper_chest" ]	=	true,
-	[ "ironchest:silver_chest" ]	=	true,
-	[ "ironchest:crystal_chest" ]	=	true,
-	[ "ironchest:obsidian_chest" ]	=	true,
+local tChestStrings = {
+    "minecraft:chest",
+    "minecraft:trapped_chest",
+    "minecraft:barrel",
+    "ironchest:.-_chest"
+}
+
+local tDrawerStrings = {
+    "_drawers_[124]"
+}
+
+local tShulkerStrings = {
+    "shulker_box"
+}
+
+local tTorchStrings = {
+    "minecraft:torch"
 }
 
 local sDrawerName
@@ -37,6 +43,13 @@ local tSlot			=	{
 	torch		=	16,
 	drawer		=	15,
 	shulker		=	14
+}
+
+local tSlotStringMapping = {
+    chest       =   tChestStrings,
+    torch       =   tTorchStrings,
+    drawer      =   tDrawerStrings,
+    shulker     =   tShulkerStrings
 }
 
 local tDrawerContent	=	{
@@ -62,6 +75,16 @@ local tInspectMapping = {
 
 
 -- Functions --
+local function containsName( sName, tMatchList )
+    for k, v in pairs(tMatchList) do
+        if sName:match(v) then
+            return true
+        end
+    end
+
+    return false
+end
+
 local function dig( sDirection )
 	--[[
 		sDirection	-	Direction in which to dig, possible directions:
@@ -252,10 +275,48 @@ local function compressStacks()
 	end
 end
 
+--[[
+    Restocks valid items for given slot with given name patterns
+]]
+local function stock( nSlot, tNames )
+    local tItem = turtle.getItemDetail(tSlot)
+    local sTargetName = tItem and tItem.name
+    local nSelectedSlot = turtle.getSelectedSlot()
+    local bRestockedItems = false -- Keeps track if items were actually restocked
+
+    -- A junk item landed in this slot
+    if tItem and not containsName(tItem.name, tNames) then
+        return false
+    end
+
+    for i = 1, 16 do
+        if turtle.getItemSpace(nSlot) == 0 then
+            break
+        end
+        
+        if i ~= nSlot then
+            tItem = turtle.getItemDetail(i)
+
+            if tItem and containsName(tItem.name, tNames) then
+                sTargetName = sTargetName or tItem.name
+
+                if tItem.name == sTargetName then
+                    bRestockedItems = true
+                    turtle.select(i)
+                    turtle.transferTo(nSlot)
+                end
+            end
+        end
+    end
+
+    turtle.select(nSelectedSlot)
+    return bRestockedItems
+end
+
 local function placeChest()
-	local bPlaceChest = tArgs.chest and turtle.getItemCount( tSlot.chest ) > 0 and tChestNames[turtle.getItemDetail( tSlot.chest )["name"]]
-	local bPlaceDrawer = tArgs.drawer and turtle.getItemCount( tSlot.drawer ) > 0 and turtle.getItemDetail( tSlot.drawer )["name"] == sDrawerName
-	local bPlaceShulker = tArgs.shulker and turtle.getItemCount( tSlot.shulker ) > 0 and turtle.getItemDetail( tSlot.shulker )["name"] == sShulkerName
+	local bPlaceChest = tArgs.chest and turtle.getItemCount( tSlot.chest ) > 0 and containsName(turtle.getItemDetail(tSlot.chest)["name"], tChestStrings)
+	local bPlaceDrawer = tArgs.drawer and turtle.getItemCount( tSlot.drawer ) > 0 and containsName(turtle.getItemDetail( tSlot.drawer )["name"] tDrawerStrings)
+	local bPlaceShulker = tArgs.shulker and turtle.getItemCount( tSlot.shulker ) > 0 and containsName(turtle.getItemDetail( tSlot.shulker )["name"], tShulkerStrings)
 
 	if not ( bPlaceChest or bPlaceDrawer or bPlaceShulker ) then
 		return false
@@ -294,7 +355,8 @@ local function placeChest()
 	for i = 1, 16 do
 		for k, v in pairs( tSlot ) do
 			if i == v then
-				bSlotAvailable = false
+                -- Only block the slot off if it hasn't been stuffed with a junk item
+				bSlotAvailable = containsName(v, tSlotStringMapping[k])
 				break
 			end
 		end
@@ -374,25 +436,37 @@ local function placeChest()
 end
 
 local function checkInventory( bPlacedChest )
-	local nBlockedSlots = 0
-	local bSlotIgnore = false
+    local function getBlockedSlots()
+        local nBlockedSlots = 0
+        local bSlotIgnore = false
+        
+        for i = 1, 16 do
+            for k, v in pairs( tSlot ) do
+                if i == v then
+                    bSlotIgnore = true
+                    break
+                end
+            end
+            
+            if not bSlotIgnore and turtle.getItemCount( i ) > 0 then
+                nBlockedSlots = nBlockedSlots + 1
+            end
+            
+            bSlotIgnore = false
+        end
 
-	for i = 1, 16 do
-		for k, v in pairs( tSlot ) do
-			if i == v then
-				bSlotIgnore = true
-				break
-			end
-		end
+        return nBlockedSlots
+    end
 
-		if not bSlotIgnore and turtle.getItemCount( i ) > 0 then
-			nBlockedSlots = nBlockedSlots + 1
-		end
+    -- Only bother restocking if inventory is completely full
+    -- as restocking is slow
+    if getBlockedSlots() == tProgram.availableSlots then
+        for k, v in pairs(tSlot) do
+            stock(v, tSlotStringMapping[k])
+        end
+    end
 
-		bSlotIgnore = false
-	end
-
-	if nBlockedSlots == tProgram.availableSlots then
+	if getBlockedSlots() == tProgram.availableSlots then
 		if ( not tArgs.chest and not tArgs.drawer and not tArgs.shulker ) or bPlacedChest then
 			userInput( "Inventory full" )
 			return
@@ -404,10 +478,15 @@ local function checkInventory( bPlacedChest )
 end
 
 local function placeTorch()
-	local item = turtle.getItemDetail( tSlot.torch )
+	local item = turtle.getItemDetail(tSlot.torch)
 
-	if not item or item.name ~= "minecraft:torch" then
-		return false
+	while not item and not stock(tSlot.torch, tTorchStrings) do
+        if tArgs.stopNoTorches then
+            userInput("No torches left")
+            item = turtle.getItemDetail(tSlot.torch)
+        else
+            return false
+        end
 	end
 
 	local nSelectedSlot
@@ -451,7 +530,8 @@ local function parseArgs( tArgs )
 end
 
 local function printUsage()
-	print( "Usage: " .. shell.getRunningProgram() .. " length=<length> [chest[=true]] [drawer[=true]] [shulker[=true]]" )
+	print("Usage: " .. shell.getRunningProgram() .. " length=<length> [options]")
+    print("Type: \"" .. shell.getRunningProgram() .. " help\" for a list of options")
 end
 
 local function printHelp()
@@ -463,6 +543,9 @@ Place torches or not, default is true
 
 [torchSpacing=<spacing>]
 Sets the torch spacing to <spacing> being > 0
+
+[stopNoTorches[=false]]:
+Lets the turtle stop if no torches are present, default is true
 
 [emptyAtEnd[=false]]:
 Empty the inventory at end of mining, default is true
@@ -483,14 +566,14 @@ end
 
 
 -- Initialisation --
-tArgs = parseArgs( tArgs )
+tArgs = parseArgs(tArgs)
 
 if tArgs.help == true then
 	printHelp()
 	return
 end
 
-if type( tArgs.length ) ~= "number" then
+if type(tArgs.length) ~= "number" then
 	printUsage()
 	error( "No length given" )
 end
@@ -502,6 +585,8 @@ end
 -- Only false if specified to be false
 tArgs.placeTorches = tArgs.placeTorches ~= false
 
+tArgs.stopNoTorches = tArgs.stopNoTorches ~= false
+
 tArgs.placePlatform = tArgs.placePlatform ~= false
 
 tArgs.emptyAtEnd = tArgs.emptyAtEnd ~= false
@@ -511,23 +596,11 @@ if tArgs.chest ~= true then
 end
 
 if tArgs.drawer ~= true then
-	tSlot.drawer = nil
-else
-	local tDrawerDetail = turtle.getItemDetail( tSlot.drawer )
-
-	if tDrawerDetail and tDrawerDetail:match( "_drawers_[124]") then
-		sDrawerName = tDrawerDetail.name
-	end
+    tSlot.drawer = nil
 end
 
 if tArgs.shulker ~= true then
-	tSlot.shulker = nil
-else
-	local tShulkerDetail = turtle.getItemDetail( tSlot.shulker )
-
-	if tShulkerDetail and tShulkerDetail.name:match( "shulker_box" ) then
-		sShulkerName = tShulkerDetail.name
-	end
+    tSlot.shulker = nil
 end
 
 if type( tArgs.torchSpacing ) == "number" then
