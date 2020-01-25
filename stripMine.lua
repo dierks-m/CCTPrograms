@@ -19,13 +19,14 @@ local tProgram		=	{
 local tChestNames = {
 	[ "minecraft:chest" ]			=	true,
 	[ "minecraft:trapped_chest" ]	=	true,
+    [ "minecraft:barrel" ]          =   true,
 	[ "ironchest:iron_chest" ]		=	true,
 	[ "ironchest:gold_chest" ]		=	true,
 	[ "ironchest:diamond_chest" ]	=	true,
 	[ "ironchest:copper_chest" ]	=	true,
 	[ "ironchest:silver_chest" ]	=	true,
 	[ "ironchest:crystal_chest" ]	=	true,
-	[ "ironchest:obsidian_chest" ]	=	true
+	[ "ironchest:obsidian_chest" ]	=	true,
 }
 
 local sDrawerName
