@@ -151,11 +151,12 @@ end
 
 local function refuel( nFuelLevel )
 	local nSelectedSlot = turtle.getSelectedSlot()
-	local bSlotForbidden = false
 	nFuelLevel = nFuelLevel or 1
 
 	while turtle.getFuelLevel() < nFuelLevel do
 		for i = 1, 16 do
+            local bSlotForbidden = false
+
 			for _, v in pairs( tSlot ) do
 				if i == v then
 					bSlotForbidden = true
