@@ -299,7 +299,7 @@ local function stock( nSlot, tNames )
         if turtle.getItemSpace(nSlot) == 0 then
             break
         end
-        
+
         if i ~= nSlot then
             tItem = turtle.getItemDetail(i)
 
@@ -329,7 +329,7 @@ end
 local function getRestockNames()
     local tNames = {}
     local tItem
-    
+
     for k, v in pairs(tSlot) do
         tItem = turtle.getItemDetail(v)
 
@@ -410,7 +410,7 @@ local function placeChest()
 	end
 
     local tReservedItems = getRestockNames()
-    
+
 	for i = 1, 16 do
 		for k, v in pairs( tSlot ) do
             -- No items are left at all for this restock slot
@@ -421,10 +421,10 @@ local function placeChest()
                     tReservedItems[sMaxItemName] = true
                 end
             end
-            
+
 			if tArgs.keepRestocks or i == v then
                 local tItem = turtle.getItemDetail(i)
-                
+
 				bSlotAvailable = not (tItem and tReservedItems[tItem.name])
 
                 if not bSlotAvailable then
@@ -509,7 +509,7 @@ local function checkInventory( bPlacedChest )
     local function getBlockedSlots()
         local nBlockedSlots = 0
         local bSlotIgnore = false
-        
+
         for i = 1, 16 do
             for k, v in pairs( tSlot ) do
                 if i == v then
@@ -517,11 +517,11 @@ local function checkInventory( bPlacedChest )
                     break
                 end
             end
-            
+
             if not bSlotIgnore and turtle.getItemCount( i ) > 0 then
                 nBlockedSlots = nBlockedSlots + 1
             end
-            
+
             bSlotIgnore = false
         end
 
@@ -681,7 +681,7 @@ if tArgs.shulker ~= true then
 end
 
 if type( tArgs.torchSpacing ) == "number" then
-	tArgs.torchSpacing = tArgs.torchSpacing > 0 or 12
+	tArgs.torchSpacing = tArgs.torchSpacing > 0 and tArgs.torchSpacing or 12
 else
 	tArgs.torchSpacing = 12 -- 12 is the optimal spacing so the light level is at least 8
 end
