@@ -129,7 +129,7 @@ local function findMaterial( sMaterial )
 	for i = 1, 16 do
 		tItemDetail = turtle.getItemDetail( i )
 
-		if tItemDetail and tItemDetail == sMaterial then
+		if tItemDetail and tItemDetail.name == sMaterial then
 			turtle.select( i )
 			return true
 		elseif tArgs.useStorage and not tItemDetail and not nFirstEmptySlot then
@@ -324,7 +324,7 @@ if tArgs.shulker == true then
 	local tShulkerDetail = turtle.getItemDetail( tSlot.storage )
 
 	if tShulkerDetail and tShulkerDetail.name:match( "shulker_box" ) then
-		tInvName = tShulkerDetail.name
+		sInvName = tShulkerDetail.name
 	end
 end
 
