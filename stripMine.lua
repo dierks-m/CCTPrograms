@@ -1,19 +1,19 @@
 -- Variables --
 local tProgram		=	{
-	availableSlots		=	16,
-	fuelLevel			=	512,
-	invCheckInterval	=	10,
+    availableSlots		=	16,
+    fuelLevel			=	512,
+    invCheckInterval	=	10,
 
-	placeChests			=	false,
+    placeChests			=	false,
 
-	platformWhitelist	=	{
-		[ "minecraft:cobblestone" ] = true,
-		[ "minecraft:stone" ] = true,
-		[ "minecraft:dirt" ] = true,
-		[ "minecraft:granite" ] = true,
-		[ "minecraft:diorite" ] = true,
-		[ "minecraft:andesite" ] = true,
-	}
+    platformWhitelist	=	{
+        [ "minecraft:cobblestone" ] = true,
+        [ "minecraft:stone" ]       = true,
+        [ "minecraft:dirt" ]        = true,
+        [ "minecraft:granite" ]     = true,
+        [ "minecraft:diorite" ]     = true,
+        [ "minecraft:andesite" ]    = true,
+    }
 }
 
 local tChestStrings = {
@@ -28,7 +28,9 @@ local tDrawerStrings = {
 }
 
 local tShulkerStrings = {
-    "shulker_box"
+    "shulker_box",
+    "immersiveengineering:.*crate",
+    "dimstorage:dimensional_chest"
 }
 
 local tTorchStrings = {
@@ -39,10 +41,10 @@ local sDrawerName
 local sShulkerName
 
 local tSlot			=	{
-	chest		=	15,
-	torch		=	16,
-	drawer		=	15,
-	shulker		=	14
+    chest		=	15,
+    torch		=	16,
+    drawer		=	15,
+    shulker		=	14
 }
 
 local tSlotStringMapping = {
@@ -53,11 +55,11 @@ local tSlotStringMapping = {
 }
 
 local tDrawerContent	=	{
-	[ "minecraft:cobblestone" ]	=	true,
-	[ "minecraft:diorite" ]		=	true,
-	[ "minecraft:andesite" ]	=	true,
-	[ "minecraft:gravel" ]		=	true,
-	--[ "minecraft:granite" ]		=	true
+    [ "minecraft:cobblestone" ] =	true,
+    [ "minecraft:diorite" ]     =	true,
+    [ "minecraft:andesite" ]    =	true,
+    [ "minecraft:gravel" ]      =	true,
+    --[ "minecraft:granite" ]       =	true
 }
 
 -- Restocking drawers or shulker boxes does not make sense as they will not stack
@@ -73,9 +75,9 @@ local nXSpace = xSize - 7
 local nInitialCursorX, nInitialCursorY = term.getCursorPos()
 
 local tInspectMapping = {
-	up		=	"inspectUp",
-	down	=	"inspectDown",
-	forward	=	"inspect"
+    up      = "inspectUp",
+    down    = "inspectDown",
+    forward = "inspect"
 }
 -- Variables --
 
@@ -92,194 +94,194 @@ local function containsName( sName, tMatchList )
 end
 
 local function dig( sDirection )
-	--[[
-		sDirection	-	Direction in which to dig, possible directions:
-			forward, up, down
-	]]--
+    --[[
+    sDirection	-	Direction in which to dig, possible directions:
+    forward, up, down
+    ]]
 
-	local bIsBlock, tBlock = turtle[ tInspectMapping[ sDirection ] ]()
+    local bIsBlock, tBlock = turtle[ tInspectMapping[ sDirection ] ]()
 
-	if not bIsBlock then
-		return false
-	end
+    if not bIsBlock then
+        return false
+    end
 
-	while sDirection == "up" and turtle.detectUp() or
-		sDirection == "down" and turtle.detectDown() or
-		sDirection == "forward" and turtle.detect() do
+    while sDirection == "up" and turtle.detectUp() or
+        sDirection == "down" and turtle.detectDown() or
+        sDirection == "forward" and turtle.detect() do
 
-		if sDirection == "up" then
-			turtle.digUp()
-		elseif sDirection == "down" then
-			turtle.digDown()
-		elseif sDirection == "forward" then
-			turtle.dig()
-		end
+        if sDirection == "up" then
+            turtle.digUp()
+        elseif sDirection == "down" then
+            turtle.digDown()
+        elseif sDirection == "forward" then
+            turtle.dig()
+        end
 
-		if tBlock.name == "minecraft:gravel" or tBlock.name == "minecraft:sand" then
-			sleep( 0.25 )
-		end
-	end
+        if tBlock.name == "minecraft:gravel" or tBlock.name == "minecraft:sand" then
+            sleep( 0.25 )
+        end
+    end
 
-	return true
+    return true
 end
 
 local function userInput( sMessage )
-	local nXSize, nYSize = term.getSize()
-	local tEvent
+    local nXSize, nYSize = term.getSize()
+    local tEvent
 
-	term.setCursorPos( 1, nYSize )
-	term.write( sMessage .. " - RSHIFT to continue " )
+    term.setCursorPos( 1, nYSize )
+    term.write( sMessage .. " - RSHIFT to continue " )
 
-	while true do
-		tEvent = { os.pullEvent() }
+    while true do
+        tEvent = { os.pullEvent() }
 
-		if tEvent[1] == "key" and tEvent[2] == 344 then
-			break
-		end
-	end
+        if tEvent[1] == "key" and tEvent[2] == 344 then
+            break
+        end
+    end
 
-	term.clearLine()
+    term.clearLine()
 end
 
 local function printProgress( nCurrentBlock )
-	term.setCursorPos( 1, ySize )
+    term.setCursorPos( 1, ySize )
 
-	local str = "Block " .. nCurrentBlock .. " out of " .. tArgs.length
+    local str = "Block " .. nCurrentBlock .. " out of " .. tArgs.length
 
-	term.write( str )
+    term.write( str )
 end
 
 local function refuel( nFuelLevel )
-	local nSelectedSlot = turtle.getSelectedSlot()
-	nFuelLevel = nFuelLevel or 1
+    local nSelectedSlot = turtle.getSelectedSlot()
+    nFuelLevel = nFuelLevel or 1
 
-	while turtle.getFuelLevel() < nFuelLevel do
-		for i = 1, 16 do
+    while turtle.getFuelLevel() < nFuelLevel do
+        for i = 1, 16 do
             local bSlotForbidden = false
 
-			for _, v in pairs( tSlot ) do
-				if i == v then
-					bSlotForbidden = true
-					break
-				end
-			end
+            for _, v in pairs( tSlot ) do
+                if i == v then
+                    bSlotForbidden = true
+                    break
+                end
+            end
 
-			if not bSlotForbidden then
-				turtle.select( i )
+            if not bSlotForbidden then
+                turtle.select( i )
 
-				while turtle.refuel( 1 ) and turtle.getFuelLevel() < nFuelLevel do
-					sleep( 0 ) -- Yield
-				end
-			end
-		end
+                while turtle.refuel( 1 ) and turtle.getFuelLevel() < nFuelLevel do
+                    sleep( 0 ) -- Yield
+                end
+            end
+        end
 
-		if turtle.getFuelLevel() < nFuelLevel then
-			userInput( "No fuel" )
-		else
-			break
-		end
-	end
+        if turtle.getFuelLevel() < nFuelLevel then
+            userInput( "No fuel" )
+        else
+            break
+        end
+    end
 
-	turtle.select( nSelectedSlot )
+    turtle.select( nSelectedSlot )
 end
 
 local function move( sDirection )
-	--[[
-		Move in direction <sDirection> and destroy blocks in the way.
-		If there is any other obstruction, the turtle will wait until it goes away.
+    --[[
+    Move in direction <sDirection> and destroy blocks in the way.
+    If there is any other obstruction, the turtle will wait until it goes away.
 
-		sDirection	-	Direction in which to move, possible directions:
-			forward, up, down, back
-	]]--
+    sDirection - Direction in which to move, possible directions:
+                 forward, up, down, back
+    ]]
 
-	if sDirection == "left" then
-		turtle.turnLeft()
-		return
-	elseif sDirection == "right" then
-		turtle.turnRight()
-		return
-	end
+    if sDirection == "left" then
+        turtle.turnLeft()
+        return
+    elseif sDirection == "right" then
+        turtle.turnRight()
+        return
+    end
 
-	if turtle.getFuelLevel() < 1 then
-		refuel( tProgram.fuelLevel )
-	end
+    if turtle.getFuelLevel() < 1 then
+        refuel( tProgram.fuelLevel )
+    end
 
-	while not turtle[ sDirection ]() do
-		if sDirection == "back" or not dig( sDirection ) then
-			if sDirection == "forward" and not turtle.attack() or
-			sDirection == "down" and not turtle.attackDown() or
-			sDirection == "up" and not turtle.attackUp() then
-				sleep( 1 )
-			end
-		end
-	end
+    while not turtle[ sDirection ]() do
+        if sDirection == "back" or not dig( sDirection ) then
+            if sDirection == "forward" and not turtle.attack() or
+               sDirection == "down" and not turtle.attackDown() or
+               sDirection == "up" and not turtle.attackUp() then
+                sleep( 1 )
+            end
+        end
+    end
 end
 
 local function placePlatform()
-	if turtle.detectDown() then
-		return
-	end
+    if turtle.detectDown() then
+        return
+    end
 
-	local tCurrentItem
+    local tCurrentItem
 
-	for i = 1, 16 do
-		tCurrentItem = turtle.getItemDetail( i )
+    for i = 1, 16 do
+        tCurrentItem = turtle.getItemDetail( i )
 
-		if tCurrentItem and tProgram.platformWhitelist[ tCurrentItem.name ] then
-			if i ~= turtle.getSelectedSlot() then
-				turtle.select( i )
-			end
+        if tCurrentItem and tProgram.platformWhitelist[ tCurrentItem.name ] then
+            if i ~= turtle.getSelectedSlot() then
+                turtle.select( i )
+            end
 
-			break
-		end
-	end
+            break
+        end
+    end
 
-	turtle.placeDown()
+    turtle.placeDown()
 end
 
 local function compressStacks()
-	local bSlotForbidden -- True if the slot is otherwise used (chest, torch, etc.)
-	local bSlotSelected -- True if slot from which items are transferred away is selected
-	local nTransferToIndex = 1
-	local vItemDetailFrom, vItemDetailTo
+    local bSlotForbidden -- True if the slot is otherwise used (chest, torch, etc.)
+    local bSlotSelected -- True if slot from which items are transferred away is selected
+    local nTransferToIndex = 1
+    local vItemDetailFrom, vItemDetailTo
 
-	for i = 2, 16 do
-		for k, v in pairs( tSlot ) do
-			if i == v then
-				bSlotForbidden = true
-				break
-			end
-		end
+    for i = 2, 16 do
+        for k, v in pairs( tSlot ) do
+            if i == v then
+                bSlotForbidden = true
+                break
+            end
+        end
 
-		if not bSlotForbidden then
-			vItemDetailFrom = turtle.getItemDetail( i )
+        if not bSlotForbidden then
+            vItemDetailFrom = turtle.getItemDetail( i )
 
-			while turtle.getItemCount( i ) > 0 do
-				-- We've reached the slot from which we're trying to transfer from
-				if nTransferToIndex == i then
-					break
-				end
+            while turtle.getItemCount( i ) > 0 do
+                -- We've reached the slot from which we're trying to transfer from
+                if nTransferToIndex == i then
+                    break
+                end
 
-				vItemDetailTo = turtle.getItemDetail( nTransferToIndex )
+                vItemDetailTo = turtle.getItemDetail( nTransferToIndex )
 
-				-- Only if the slot is empty or the item type is the same, bother checking
-				if not vItemDetailTo or vItemDetailFrom.name == vItemDetailTo.name then
-					-- Only select the slot we're transferring *from* if we can actually transfer
-					if not bSlotSelected then
-						turtle.select( i )
-						bSlotSelected = true
-					end
+                -- Only if the slot is empty or the item type is the same, bother checking
+                if not vItemDetailTo or vItemDetailFrom.name == vItemDetailTo.name then
+                    -- Only select the slot we're transferring *from* if we can actually transfer
+                    if not bSlotSelected then
+                        turtle.select( i )
+                        bSlotSelected = true
+                    end
 
-					turtle.transferTo( nTransferToIndex )
-				end
+                    turtle.transferTo( nTransferToIndex )
+                end
 
-				nTransferToIndex = nTransferToIndex + 1
-			end
+                nTransferToIndex = nTransferToIndex + 1
+            end
 
-			bSlotSelected = false
-			nTransferToIndex = 1
-		end
-	end
+            bSlotSelected = false
+            nTransferToIndex = 1
+        end
+    end
 end
 
 --[[
@@ -373,47 +375,47 @@ local function getMaximumFittingRestock( tNames )
 end
 
 local function placeChest()
-	local bPlaceChest = tArgs.chest and turtle.getItemCount( tSlot.chest ) > 0 and containsName(turtle.getItemDetail(tSlot.chest)["name"], tChestStrings)
-	local bPlaceDrawer = tArgs.drawer and turtle.getItemCount( tSlot.drawer ) > 0 and containsName(turtle.getItemDetail(tSlot.drawer)["name"], tDrawerStrings)
-	local bPlaceShulker = tArgs.shulker and turtle.getItemCount( tSlot.shulker ) > 0 and containsName(turtle.getItemDetail(tSlot.shulker)["name"], tShulkerStrings)
+    local bPlaceChest = tArgs.chest and turtle.getItemCount( tSlot.chest ) > 0 and containsName(turtle.getItemDetail(tSlot.chest)["name"], tChestStrings)
+    local bPlaceDrawer = tArgs.drawer and turtle.getItemCount( tSlot.drawer ) > 0 and containsName(turtle.getItemDetail(tSlot.drawer)["name"], tDrawerStrings)
+    local bPlaceShulker = tArgs.shulker and turtle.getItemCount( tSlot.shulker ) > 0 and containsName(turtle.getItemDetail(tSlot.shulker)["name"], tShulkerStrings)
 
-	if not ( bPlaceChest or bPlaceDrawer or bPlaceShulker ) then
-		return false
-	end
+    if not ( bPlaceChest or bPlaceDrawer or bPlaceShulker ) then
+    return false
+    end
 
-	local bSlotAvailable = true
-	local bSavedJunkItem = false
-	local nSelectedSlot = turtle.getSelectedSlot()
+    local bSlotAvailable = true
+    local bSavedJunkItem = false
+    local nSelectedSlot = turtle.getSelectedSlot()
 
-	local nItemCount = 0
-	local nTargetCount = 0
+    local nItemCount = 0
+    local nTargetCount = 0
 
-	if bPlaceChest then
-		dig( "down" )
-		turtle.select( tSlot.chest )
-		turtle.placeDown()
-	end
+    if bPlaceChest then
+        dig( "down" )
+        turtle.select( tSlot.chest )
+        turtle.placeDown()
+    end
 
-	if bPlaceDrawer then
-		turtle.select( tSlot.drawer )
-		turtle.placeUp()
-	end
+    if bPlaceDrawer then
+        turtle.select( tSlot.drawer )
+        turtle.placeUp()
+    end
 
-	if bPlaceShulker then
-		if bPlaceChest or bPlaceDrawer then
-			-- Otherwise the item dug out would go in the chest slot
-			turtle.select( nSelectedSlot )
-		end
+    if bPlaceShulker then
+        if bPlaceChest or bPlaceDrawer then
+            -- Otherwise the item dug out would go in the chest slot
+            turtle.select( nSelectedSlot )
+        end
 
-		dig( "forward" )
-		turtle.select( tSlot.shulker )
-		turtle.place()
-	end
+        dig( "forward" )
+        turtle.select( tSlot.shulker )
+        turtle.place()
+    end
 
     local tReservedItems = getRestockNames()
 
-	for i = 1, 16 do
-		for k, v in pairs( tSlot ) do
+    for i = 1, 16 do
+        for k, v in pairs( tSlot ) do
             -- No items are left at all for this restock slot
             if turtle.getItemCount(v) == 0 and tValidRestocks[k] then
                 local sMaxItemName = getMaximumFittingRestock(tSlotStringMapping[k])
@@ -423,87 +425,87 @@ local function placeChest()
                 end
             end
 
-			if tArgs.keepRestocks or i == v then
+            if tArgs.keepRestocks or i == v then
                 local tItem = turtle.getItemDetail(i)
 
-				bSlotAvailable = not (tItem and tReservedItems[tItem.name])
+                bSlotAvailable = not (tItem and tReservedItems[tItem.name])
 
                 if not bSlotAvailable then
                     break
                 end
-			end
-		end
+            end
+        end
 
-		if bSlotAvailable then
-			nItemCount = turtle.getItemCount( i )
+        if bSlotAvailable then
+            nItemCount = turtle.getItemCount( i )
 
-			-- Save some items for building bridges in lava lakes etc.
-			if not bSavedJunkItem then
-				if nItemCount > 0 and tProgram.platformWhitelist[ turtle.getItemDetail( i )["name"] ] then
-					nTargetCount = math.min( 32, nItemCount )
-					bSavedJunkItem = true
-				end
+            -- Save some items for building bridges in lava lakes etc.
+            if not bSavedJunkItem then
+                if nItemCount > 0 and tProgram.platformWhitelist[ turtle.getItemDetail( i )["name"] ] then
+                    nTargetCount = math.min( 16, nItemCount )
+                    bSavedJunkItem = true
+                end
 
-			else
-				nTargetCount = 0
-			end
+            else
+                nTargetCount = 0
+            end
 
-			-- Only bother selecting slots when there are items (selecting is slow)
-			if nItemCount > 0 then
-				turtle.select( i )
-			end
+            -- Only bother selecting slots when there are items (selecting is slow)
+            if nItemCount > 0 then
+                turtle.select( i )
+            end
 
-			if nItemCount > nTargetCount and bPlaceDrawer and tDrawerContent[ turtle.getItemDetail( i )["name"] ] then
-				turtle.dropUp( nItemCount - nTargetCount )
+            if nItemCount > nTargetCount and bPlaceDrawer and tDrawerContent[ turtle.getItemDetail( i )["name"] ] then
+                turtle.dropUp( nItemCount - nTargetCount )
 
-				nItemCount = turtle.getItemCount() -- Maybe not all items could fit
-			end
+                nItemCount = turtle.getItemCount() -- Maybe not all items could fit
+            end
 
-			if nItemCount > nTargetCount and bPlaceChest then
-				turtle.dropDown( nItemCount - nTargetCount )
+            if nItemCount > nTargetCount and bPlaceChest then
+                turtle.dropDown( nItemCount - nTargetCount )
 
-				nItemCount = turtle.getItemCount() -- Maybe still some items left
-			end
+                nItemCount = turtle.getItemCount() -- Maybe still some items left
+            end
 
-			if nItemCount > nTargetCount and bPlaceShulker then
-				turtle.drop( nItemCount - nTargetCount )
-			end
+            if nItemCount > nTargetCount and bPlaceShulker then
+                turtle.drop( nItemCount - nTargetCount )
+            end
 
-			if turtle.getItemCount() > nTargetCount then
-				-- If we couldn't get rid of this stack at all, try and compress it,
-				-- as it may be in a random slot
-				bCompressStacks = true
-			end
-		end
+            if turtle.getItemCount() > nTargetCount then
+                -- If we couldn't get rid of this stack at all, try and compress it,
+                -- as it may be in a random slot
+                bCompressStacks = true
+            end
+        end
 
-		bSlotAvailable = true
-	end
+        bSlotAvailable = true
+    end
 
-	if bPlaceShulker then
-		turtle.select( tSlot.shulker )
+    if bPlaceShulker then
+        turtle.select( tSlot.shulker )
 
-		if turtle.getItemCount() > 0 then
-			-- Maybe inventory was full and an item landed here anyway
-			turtle.dropDown()
-		end
+        if turtle.getItemCount() > 0 then
+            -- Maybe inventory was full and an item landed here anyway
+            turtle.dropDown()
+        end
 
-		turtle.dig()
-	end
+        turtle.dig()
+    end
 
-	if bPlaceDrawer then
-		turtle.select( tSlot.drawer )
+    if bPlaceDrawer then
+        turtle.select( tSlot.drawer )
 
-		if turtle.getItemCount() > 0 then
-			-- Maybe inventory was full and an item landed here anyway
-			turtle.dropDown()
-		end
+        if turtle.getItemCount() > 0 then
+            -- Maybe inventory was full and an item landed here anyway
+            turtle.dropDown()
+        end
 
-		turtle.digUp()
-	end
+        turtle.digUp()
+    end
 
-	compressStacks()
+    compressStacks()
 
-	turtle.select( nSelectedSlot )
+    turtle.select( nSelectedSlot )
 end
 
 local function checkInventory( bPlacedChest )
@@ -539,15 +541,15 @@ local function checkInventory( bPlacedChest )
         return
     end
 
-	if getBlockedSlots() == tProgram.availableSlots then
-		if ( not tArgs.chest and not tArgs.drawer and not tArgs.shulker ) or bPlacedChest then
-			userInput( "Inventory full" )
-			return
-		end
+    if getBlockedSlots() == tProgram.availableSlots then
+        if ( not tArgs.chest and not tArgs.drawer and not tArgs.shulker ) or bPlacedChest then
+            userInput( "Inventory full" )
+            return
+        end
 
-		placeChest()
-		checkInventory( true )
-	end
+        placeChest()
+        checkInventory( true )
+    end
 end
 
 local function placeTorch()
@@ -562,53 +564,53 @@ local function placeTorch()
         end
 	end
 
-	local nSelectedSlot
+    local nSelectedSlot
 
-	nSelectedSlot = turtle.getSelectedSlot()
-	turtle.select( tSlot.torch )
-	move( "up" )
-	turtle.placeDown()
-	turtle.select( nSelectedSlot )
-	move( "forward" )
-	move( "down" )
+    nSelectedSlot = turtle.getSelectedSlot()
+    turtle.select( tSlot.torch )
+    move( "up" )
+    turtle.placeDown()
+    turtle.select( nSelectedSlot )
+    move( "forward" )
+    move( "down" )
 
-	return true
+    return true
 end
 
 local function parseArgs( tArgs )
-	local tParsedArgs = {}
-	local sArgName
-	local vArgValue
+    local tParsedArgs = {}
+    local sArgName
+    local vArgValue
 
-	for i = 1, #tArgs do
-		sArgName = tArgs[i]:match( "[%w_]+" )
-		vArgValue = tArgs[i]:match( "[%w_]+%s*=%s*([%w_]+)" )
+    for i = 1, #tArgs do
+        sArgName = tArgs[i]:match( "[%w_]+" )
+        vArgValue = tArgs[i]:match( "[%w_]+%s*=%s*([%w_]+)" )
 
-		if vArgValue then
-			if vArgValue == "true" then
-				vArgValue = true
-			elseif vArgValue == "false" then
-				vArgValue = false
-			elseif tonumber( vArgValue ) then
-				vArgValue = tonumber( vArgValue )
-			end
+        if vArgValue then
+            if vArgValue == "true" then
+                vArgValue = true
+            elseif vArgValue == "false" then
+                vArgValue = false
+            elseif tonumber( vArgValue ) then
+                vArgValue = tonumber( vArgValue )
+            end
 
-			tParsedArgs[ sArgName ] = vArgValue
-		else
-			tParsedArgs[ sArgName ] = true
-		end
-	end
+            tParsedArgs[ sArgName ] = vArgValue
+        else
+            tParsedArgs[ sArgName ] = true
+        end
+    end
 
-	return tParsedArgs
+    return tParsedArgs
 end
 
 local function printUsage()
-	print("Usage: " .. shell.getRunningProgram() .. " length=<length> [options]")
+    print("Usage: " .. shell.getRunningProgram() .. " length=<length> [options]")
     print("Type: \"" .. shell.getRunningProgram() .. " help\" for a list of options")
 end
 
 local function printHelp()
-	textutils.pagedPrint( [=[
+    textutils.pagedPrint( [=[
 Valid arguments:
 
 [placeTorches[=false]]:
@@ -645,17 +647,17 @@ end
 tArgs = parseArgs(tArgs)
 
 if tArgs.help == true then
-	printHelp()
-	return
+    printHelp()
+    return
 end
 
 if type(tArgs.length) ~= "number" then
-	printUsage()
-	error( "No length given" )
+    printUsage()
+    error( "No length given" )
 end
 
 if tArgs.chest and tArgs.shulker then
-	error( "Chest and Shulker options are mutually exclusive!" )
+    error( "Chest and Shulker options are mutually exclusive!" )
 end
 
 -- Only false if specified to be false
@@ -670,7 +672,7 @@ tArgs.emptyAtEnd = tArgs.emptyAtEnd ~= false
 tArgs.keepRestocks = tArgs.keepRestocks ~= false
 
 if tArgs.chest ~= true then
-	tSlot.chest = nil
+    tSlot.chest = nil
 end
 
 if tArgs.drawer ~= true then
@@ -682,13 +684,13 @@ if tArgs.shulker ~= true then
 end
 
 if type( tArgs.torchSpacing ) == "number" then
-	tArgs.torchSpacing = tArgs.torchSpacing > 0 and tArgs.torchSpacing or 12
+    tArgs.torchSpacing = tArgs.torchSpacing > 0 and tArgs.torchSpacing or 12
 else
-	tArgs.torchSpacing = 12 -- 12 is the optimal spacing so the light level is at least 8
+    tArgs.torchSpacing = 12 -- 12 is the optimal spacing so the light level is at least 8
 end
 
 for k, v in pairs( tSlot ) do
-	tProgram.availableSlots = tProgram.availableSlots - 1
+    tProgram.availableSlots = tProgram.availableSlots - 1
 end
 
 term.setCursorPos( 1, ySize )
@@ -700,30 +702,30 @@ term.clearLine()
 local bTravelledBlock = false
 
 for i = 1, tArgs.length do
-	printProgress( i )
+    printProgress( i )
 
-	if tArgs.placeTorches == true and ( i-2 ) % ( tArgs.torchSpacing+1 ) == 0 then
-		bTravelledBlock = placeTorch()
-	end
+    if tArgs.placeTorches == true and ( i-2 ) % ( tArgs.torchSpacing+1 ) == 0 then
+        bTravelledBlock = placeTorch()
+    end
 
-	if ( i-2 ) % ( tProgram.invCheckInterval+1 ) == 0 then
-		checkInventory()
-	end
+    if ( i-2 ) % ( tProgram.invCheckInterval+1 ) == 0 then
+        checkInventory()
+    end
 
-	if not bTravelledBlock then
-		move( "forward" )
-		dig( "up" )
-	end
+    if not bTravelledBlock then
+        move( "forward" )
+        dig( "up" )
+    end
 
-	if tArgs.placePlatform == true then
-		placePlatform()
-	end
+    if tArgs.placePlatform == true then
+        placePlatform()
+    end
 
-	bTravelledBlock = false
+    bTravelledBlock = false
 end
 
 if tArgs.drawer and tArgs.emptyAtEnd then
-	placeChest()
+    placeChest()
 end
 
 -- Clear up the "Block x of y" and make the cursor not be off-screen
