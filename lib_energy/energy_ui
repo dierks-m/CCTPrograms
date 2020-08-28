@@ -1,0 +1,222 @@
+local ui = {}
+
+ui.mainCanvas = gui.createGUIObject( {
+  top     = 0;
+  bottom    = 0;
+  left    = 0;
+  right   = 0;
+  bg_color  = SCHEME.BG_COLOUR;
+}, "CanvasObject" )
+
+ui.amountCells = gui.createGUIObject( {
+  top     = 1;
+  left    = 1;
+  width   = "25%";
+  height    = 1;
+  bg_color  = SCHEME.BG_COLOUR;
+  fg_color  = SCHEME.CELL_NUMBER;
+  text    = { "%%NUMCELLS; cell%%OPTS;" };
+  variables = {
+    NUMCELLS = "0";
+    OPTS = "s";
+  }
+}, "TextArea", ui.mainCanvas )
+
+ui.updateSign = gui.createGUIObject( {
+  top     = 1;
+  right   = 1;
+  width   = 1;
+  height    = 1;
+  bg_color  = SCHEME.BG_COLOUR;
+  fg_color  = SCHEME.FG_COLOUR;
+  text    = { "&r;%%UPDATESIGN;" };
+  variables = { UPDATESIGN = program.updateSigns[ program.currentSign ] };
+}, "TextArea", ui.mainCanvas )
+
+ui.currentEnergyInfo = gui.createGUIObject( {
+  top     = "50%, -2";
+  left    = 5;
+  right   = 5;
+  height    = 3;
+  text    = { "&m;%%CURRENTENERGY; FE * %%CURRENTPERCENTAGE; %", "", "&m;&%%COLOR;;%%CURRENTCHANGE; FE/t" };
+  variables = {
+    CURRENTENERGY = "N/A";
+    CURRENTPERCENTAGE = "N/A";
+    CURRENTCHANGE = "N/A";
+    COLOR = "o";
+  };
+  bg_color  = SCHEME.BG_COLOUR;
+  fg_color  = SCHEME.FG_COLOUR;
+}, "TextArea", ui.mainCanvas )
+
+ui.remainingInfo = gui.createGUIObject( {
+  bottom    = 1;
+  left    = 1;
+  width   = "40%";
+  height    = 2;
+  bg_color  = SCHEME.BG_COLOUR;
+  fg_color  = SCHEME.FG_COLOUR;
+  text    = { "%%TIME;", "&%%COLOR;;%%RTYPE;&o;" };
+  variables = { RTYPE = "until empty"; TIME = "N/A"; COLOR = "o"};
+}, "TextArea", ui.mainCanvas )
+
+ui.maxLossGain = gui.createGUIObject( {
+  bottom    = 1;
+  right   = 1;
+  width   = "60%";
+  height    = 2;
+  bg_color  = SCHEME.BG_COLOUR;
+  fg_color  = SCHEME.FG_COLOUR;
+  text    = { "&r;%%MAXIMUMGAIN; FE/t ^", "&r;%%MAXIMUMLOSS; FE/t v" };
+  variables = { MAXIMUMLOSS = "N/A"; MAXIMUMGAIN = "N/A" };
+}, "TextArea", ui.mainCanvas )
+
+ui.toCellInfo = gui.createGUIObject( {
+  top       = "50%,-2.5";
+  height      = 5;
+  right     = 0;
+  width     = 5;
+  margin_top    = 2;
+  margin_bottom = 2;
+  text      = { "&m;>" };
+  bg_color    = SCHEME.BG_COLOUR;
+  fg_color    = SCHEME.FG_COLOUR;
+}, "Button", ui.mainCanvas )
+
+ui.toOutputInfo = gui.createGUIObject( {
+  top       = "50%,-2.5";
+  height      = 5;
+  left      = 0;
+  width     = 5;
+  margin_top    = 2;
+  margin_bottom = 2;
+  text      = { "&m;<" };
+  bg_color    = SCHEME.BG_COLOUR;
+  fg_color    = SCHEME.FG_COLOUR;
+}, "Button", ui.mainCanvas )
+
+ui.cellInfoCanvas = gui.createGUIObject( {
+  top       = 0;
+  bottom      = 0;
+  left      = 0;
+  right     = 0;
+  bg_color    = SCHEME.BG_COLOUR;
+}, "CanvasObject" )
+
+ui.cellInfoToMainCanvas = gui.createGUIObject( {
+  top       = "50%,-2.5";
+  height      = 5;
+  left      = 0;
+  width     = 5;
+  margin_top    = 2;
+  margin_bottom = 2;
+  text      = { "&m;<" };
+  bg_color    = SCHEME.BG_COLOUR;
+  fg_color    = SCHEME.FG_COLOUR;
+}, "Button", ui.cellInfoCanvas )
+
+ui.cellList = gui.createGUIObject( {
+  top       = 1;
+  bottom      = 1;
+  left      = 5+1;
+  right     = 1+3+1+1+1;
+  bg_color    = SCHEME.LIST_BG_COLOUR;
+}, "List", ui.cellInfoCanvas )
+
+ui.cellScrollIndicator = gui.createGUIObject( {
+  top       = 1;
+  bottom      = 1;
+  right     = 1+3+1;
+  width     = 1;
+  bg_color    = SCHEME.LIST_BG_COLOUR;
+  fg_color    = SCHEME.SCROLL_BAR_FG;
+}, "ScrollIndicator", ui.cellInfoCanvas )
+
+ui.cellScrollUp = gui.createGUIObject( {
+  top       = 1;
+  right     = 1;
+  width     = 3;
+  height      = 3;
+  bg_color    = SCHEME.BG_COLOUR;
+  fg_color    = SCHEME.FG_COLOUR;
+  margin      = 1;
+  text      = { "^" };
+}, "Button", ui.cellInfoCanvas )
+
+ui.cellScrollDown = gui.createGUIObject( {
+  bottom      = 1;
+  right     = 1;
+  width     = 3;
+  height      = 3;
+  bg_color    = SCHEME.BG_COLOUR;
+  fg_color    = SCHEME.FG_COLOUR;
+  margin      = 1;
+  text      = { "v" };
+}, "Button", ui.cellInfoCanvas )
+
+ui.outputInfoCanvas = gui.createGUIObject( {
+  top       = 0;
+  bottom      = 0;
+  left      = 0;
+  right     = 0;
+  bg_color    = SCHEME.BG_COLOUR;
+}, "CanvasObject" )
+
+ui.outputInfoToMainCanvas = gui.createGUIObject( {
+  top       = "50%,-2.5";
+  height      = 5;
+  right     = 0;
+  width     = 5;
+  margin_top    = 2;
+  margin_bottom = 2;
+  text      = { "&m;>" };
+  bg_color    = SCHEME.BG_COLOUR;
+  fg_color    = SCHEME.FG_COLOUR;
+}, "Button", ui.outputInfoCanvas )
+
+ui.outputList = gui.createGUIObject( {
+  top       = 1;
+  bottom      = 1;
+  left      = 1+3+1+1+1;
+  right     = 5+1;
+  bg_color    = SCHEME.LIST_BG_COLOUR;
+}, "List", ui.outputInfoCanvas )
+
+ui.outputScrollIndicator = gui.createGUIObject( {
+  top       = 1;
+  bottom      = 1;
+  left      = 1+3+1;
+  width     = 1;
+  bg_color    = SCHEME.LIST_BG_COLOUR;
+  fg_color    = SCHEME.SCROLL_BAR_FG;
+}, "ScrollIndicator", ui.outputInfoCanvas )
+
+ui.outputScrollUp = gui.createGUIObject( {
+  top       = 1;
+  left      = 1;
+  width     = 3;
+  height      = 3;
+  bg_color    = SCHEME.BG_COLOUR;
+  fg_color    = SCHEME.FG_COLOUR;
+  margin      = 1;
+  text      = { "^" };
+}, "Button", ui.outputInfoCanvas )
+
+ui.outputScrollDown = gui.createGUIObject( {
+  bottom        = 1;
+  left      = 1;
+  width     = 3;
+  height      = 3;
+  bg_color    = SCHEME.BG_COLOUR;
+  fg_color    = SCHEME.FG_COLOUR;
+  margin      = 1;
+  text      = { "v" };
+}, "Button", ui.outputInfoCanvas )
+
+
+ui.outputList.linkScrollIndicator( ui.outputScrollIndicator )
+ui.cellList.linkScrollIndicator( ui.cellScrollIndicator )
+
+-- Returning of user interface --
+return ui
+-- Returning of user interface --
