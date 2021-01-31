@@ -1,0 +1,39 @@
+[
+    {
+        "from": {
+            "name": "top",
+            "filter": [],
+            "whitelist": false,
+            "redstone": {
+                "side": "right",
+                "color": "white",
+                "inverted": true
+            }
+        },
+
+        "to": [
+            {
+                "name": "left",
+                "filter": ["minecraft:iron_ingot"],
+                "whitelist": false,
+                "redstone": {
+                    "side": "top",
+                    "color": "white",
+                    "inverted": true
+                }
+            },
+            {
+                "name": "back",
+                "filter": ["minecraft:iron_ingot"],
+                "whitelist": true,
+                "redstone": {
+                    "side": "front",
+                    "inverted": false
+                }
+            }
+        ],
+
+        "checkInterval": 10,
+        "transferInterval": 1
+    }
+]
