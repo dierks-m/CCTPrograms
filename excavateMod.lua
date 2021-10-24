@@ -5,7 +5,7 @@ end
 
 local tArgs = {...}
 if #tArgs < 2 then
-    print( "Usage: excavate <width> <length> [findVerticalBlock (find)]" )
+    print( "Usage: excavate <width> <length> [findVerticalBlock (find)] [direction (left)]" )
     return
 end
 
@@ -31,15 +31,28 @@ local refuel -- Filled in further down
 local function unload(_bKeepOneFuelStack)
     print( "Unloading items..." )
 
-    for n=1, 16 do
+    local fuelStackSlot
+
+    for n = 1, 16 do
         local nCount = turtle.getItemCount(n)
+
         if nCount > 0 then
-            turtle.select(n)
             local bDrop = true
+            turtle.select(n)
+
             if _bKeepOneFuelStack and turtle.refuel(0) then
-                bDrop = false
-                _bKeepOneFuelStack = false
+                if fuelStackSlot then
+                    -- Compress fuel stacks to keep a full stack at all times
+                    if turtle.transferTo(fuelStackSlot) == nCount then
+                        -- There's nothing left to drop, as we could all transfer it
+                        bDrop = false
+                    end
+                else
+                    fuelStackSlot = n
+                    bDrop = false
+                end
             end
+
             if bDrop then
                 turtle.drop()
                 unloaded = unloaded + nCount
@@ -314,9 +327,14 @@ local alternate = 0
 local done = false
 
 if tArgs[3] == "find" then
-	findFirstBlock()
+    findFirstBlock()
     -- Go down one block - additionally to the block it goes down anyway
-	done = not tryDown()
+    done = not tryDown()
+end
+
+if tArgs[3] == "left" or tArgs[4] == "left" then
+    -- Start in other direction
+    alternate = 1
 end
 
 done = not tryDown()
@@ -368,6 +386,9 @@ while not done do
     if length > 1 then
         turnRight()
         turnRight()
+
+        -- If width is even, we need to go the other direction on new layer
+        alternate = 1 - (width % 2) - alternate
     end
 
     --[[
@@ -391,6 +412,10 @@ goTo(0, 0, 0, 0, 1)
 -- Seal the hole
 if reseal then
     turtle.placeDown()
+end
+
+if rednet.isOpen() then
+    rednet.broadcast({command = "say", args = {message = " is done excavating.", label = os.getComputerLabel(), noSpace = true}}, "chunkLoading")
 end
 
 print("Mined " .. (collected + unloaded) .. " items total.")
