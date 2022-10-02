@@ -312,7 +312,7 @@ function argParseMT:printHelp()
         }
     end
 
-    textutils.pagedTabulate(colors.grey, {"Argument", "Alias", "Description"}, colors.white, table.unpack(rows))
+    textutils.pagedTabulate(colors.lightGray, {"Argument", "Alias", "Description"}, colors.white, table.unpack(rows))
 end
 
 local function new()
