@@ -4,7 +4,8 @@ local argParseMT = {}
 -- Metatable objects for different argument types --
 local superMT = {}
 local stringArgMT = setmetatable({}, {__index = superMT})
-local intArgMT = setmetatable({}, {__index = superMT})
+local floatArgMT = setmetatable({}, {__index = superMT})
+local intArgMT = setmetatable({}, {__index = floatArgMT})
 local boolArgMT = setmetatable({}, {__index = superMT})
 -- Variables --
 
@@ -56,18 +57,18 @@ function stringArgMT:setMaxLength(maxLength)
     return self
 end
 
-function intArgMT:setDefault(default)
+function floatArgMT:setDefault(default)
     assert(type(default == "number"), "Default value must be a number")
 
     self.defaultValue = default
     return self
 end
 
-function intArgMT:parse(value)
+function floatArgMT:parse(value)
     local parsed = tonumber(value)
 
     if not parsed then
-        return false, "Could not parse value as integer"
+        return false, "Could not parse value as number"
     end
 
     if self.min and parsed < self.min then
@@ -81,18 +82,40 @@ function intArgMT:parse(value)
     return true, parsed
 end
 
-function intArgMT:setMin(min)
+function floatArgMT:setMin(min)
     assert(tonumber(min), "Minimum value must be number")
 
     self.min = min
     return self
 end
 
-function intArgMT:setMax(max)
+function floatArgMT:setMax(max)
     assert(tonumber(max), "Maximum value must be number")
 
     self.max = max
     return self
+end
+
+function intArgMT:parse(value)
+    local parsed = tonumber(value)
+
+    if not parsed then
+        return false, "Could not parse value as number"
+    end
+
+    if math.floor(parsed) ~= parsed then
+        return false, "Could not parse value as integer: number has decimal places"
+    end
+
+    if self.min and parsed < self.min then
+        return false, "Value below minimum"
+    end
+
+    if self.max and parsed > self.max then
+        return false, "Value above maximum"
+    end
+
+    return true, parsed
 end
 
 function boolArgMT:setDefault(default)
@@ -119,6 +142,8 @@ local function createArgument(argType)
         return setmetatable(argument, {__index=stringArgMT})
     elseif argType == "integer" then
         return setmetatable(argument, {__index=intArgMT})
+    elseif argType == "float" then
+        return setmetatable(argument, {__index=floatArgMT})
     elseif argType == "boolean" then
         return setmetatable(argument, {__index=boolArgMT})
     end
