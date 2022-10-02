@@ -29,6 +29,8 @@ function stringArgMT:setDefault(default)
 end
 
 function stringArgMT:parse(value)
+    value = value:match("^'(.+)'$") or value -- Strip explicit single quotes
+
     if self.minLength and #value < self.minLength then
         return false, "Value shorter than minimum length"
     end
@@ -101,7 +103,7 @@ function boolArgMT:setDefault(default)
 end
 
 function boolArgMT:parse(value)
-    if value == "true" or value == "" or value == "1" then  -- Empty just sets flag to true
+    if value == "true" or value == "" or value == "1" or value == true then  -- Empty just sets flag to true
         return true, true
     elseif value == "false" or value == "0" then
         return true, false
@@ -141,18 +143,21 @@ local function splitArguments(...)
 
     -- Search for end of options backwards
     for i = #rawArgs, 1, -1 do
+        optionsEnd = i - 1
+
         if rawArgs[i]:match("^%-%-?$") then
             -- '--' or '-' as delimiter between options and arguments
             table.remove(rawArgs, i)
-            optionsEnd = i - 1
             break
-        elseif rawArgs[i]:match("^%-%-?.+$") then
+        elseif rawArgs[i]:match("^%-%-.+$") or rawArgs[i]:match("^%-[A-Za-z]+$") then
             -- Found a valid option, following value will be option value
             -- otherwise, if end is reached, option must be a flag
             optionsEnd = math.min(#rawArgs, i + 1)
             break
-        else
+        elseif rawArgs[i]:match("^%-[A-Za-z]+%d+$") then
+            -- Short option, but with value already assigned
             optionsEnd = i
+            break
         end
     end
 
@@ -167,56 +172,63 @@ local function splitArguments(...)
     return options, arguments
 end
 
-local function inflateOptions(self, options)
-    local inflatedOptions = {}
+---
+-- Splits short options with directly attached values (e.g., '-xzf5') to pairs
+-- (e.g., '-xzf 5')
+local function splitShortOptionValues(options)
+    local splitOptions = {}
 
     for _, v in pairs(options) do
-        local shortOption, value = v:match("^%-([A-Za-z]+)(%d*)$")
+        local shortOption, value = v:match("^(%-[A-Za-z]+)(%d*)$")
 
-        if shortOption then
-            for abbrOption in shortOption:gmatch(".") do
-                if self.alias[abbrOption] then
-                    inflatedOptions[#inflatedOptions + 1] = "--" .. self.alias[abbrOption]
-
-                    if value and #value > 0 then
-                        inflatedOptions[#inflatedOptions + 1] = value
-                    end
-                else
-                    error("Unrecognized option '-" .. abbrOption .. "'", 0)
-                end
-            end
+        if shortOption and value and #value > 0 then
+            table.insert(splitOptions, shortOption)
+            table.insert(splitOptions, value)
         else
-            inflatedOptions[#inflatedOptions + 1] = v
+            table.insert(splitOptions, v)
         end
     end
 
-    return inflatedOptions
+    return splitOptions
 end
 
-local function createOptionPairs(inflatedOptions)
-    local optionPairs = {}
-    local currentOption
+local function enterOptionKV(self, option, value, kvStore)
+    local shortOption = option:match("^%-([A-Za-z]+)$")
 
-    for _, v in pairs(inflatedOptions) do
-        local optionName = v:match("^%-%-(.+)$")
-
-        if optionName then
-            if currentOption then
-                optionPairs[currentOption] = ""
+    if shortOption then
+        for abbrOption in shortOption:gmatch(".") do
+            if self.alias[abbrOption] then
+                kvStore[self.alias[abbrOption]] = value
+            else
+                error("Unrecognized option '-" .. abbrOption .. "'", 0)
             end
-
-            currentOption = optionName
-        elseif currentOption then
-            optionPairs[currentOption] = v
-            currentOption = nil
         end
+
+        return
     end
 
-    if currentOption then
-        optionPairs[currentOption] = ""
+    kvStore[option:match("^%-%-(.+)$")] = value
+end
+
+local function mapOptions(self, options)
+    local optionKVs = {}
+    local prevOption
+
+    for _, v in pairs(options) do
+        local currOption = v:match("^(%-[A-Za-z]+)$") or v:match("^(%-%-.+)$")
+
+        if prevOption then
+            enterOptionKV(self, prevOption, currOption ~= nil or v, optionKVs)
+        end
+
+        prevOption = currOption
     end
 
-    return optionPairs
+    if prevOption then
+        enterOptionKV(self, prevOption, true, optionKVs)
+    end
+
+    return optionKVs
 end
 
 local function parseArgValues(self, optionPairs)
@@ -270,8 +282,8 @@ function argParseMT:parse(...)
     return checkRequiredArguments(self,
             fillDefaults(self,
                     parseArgValues(self,
-                            createOptionPairs(
-                                    inflateOptions(self, options)
+                            mapOptions(self,
+                                    splitShortOptionValues(options)
                             )
                     )
             )
@@ -300,7 +312,7 @@ function argParseMT:printHelp()
         }
     end
 
-    textutils.pagedTabulate(colors.lightBlue, {"Argument", "Alias", "Description"}, colors.white, table.unpack(rows))
+    textutils.pagedTabulate(colors.grey, {"Argument", "Alias", "Description"}, colors.white, table.unpack(rows))
 end
 
 local function new()
