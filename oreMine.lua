@@ -2,28 +2,45 @@
 local tlib = require("/api/tlib")
 
 -- Variables --
+local tryRefuelLava = true
+local lavaRefuelLowerThreshold = 80000
+local lavaRefuelUpperThreshold = turtle.getFuelLevel()
+
+local enableShaftRestoration = true
 local preciseShaftRestoration = true
+
 local prg = {
     facing = 0,
     currHeight = 0,
 }
 
 local tPlaceBelow = {
-    ["minecraft:dirt"]          = true,
-    ["minecraft:cobblestone"]   = true,
-    ["minecraft:gravel"]        = true,
-    ["minecraft:sand"]          = true,
-    ["minecraft:sandstone"]     = true,
-    ["minecraft:granite"]       = true,
-    ["minecraft:andesite"]      = true,
-    ["minecraft:diorite"]       = true,
-    ["bluepower:marble"]        = true,
-    ["quark:smooth_basalt"]     = true,
-    ["quark:cobbled_deepslate"] = true,
-    ["minecraft:netherrack"]    = true,
-    ["minecraft:blackstone"]    = true,
-    ["quark:cobbled_deepslate"] = true,
-    ["quark:slate"]             = true,
+    ["minecraft:dirt"]              = true,
+    ["minecraft:cobblestone"]       = true,
+    ["minecraft:gravel"]            = true,
+    ["minecraft:sand"]              = true,
+    ["minecraft:sandstone"]         = true,
+    ["minecraft:granite"]           = true,
+    ["minecraft:andesite"]          = true,
+    ["minecraft:diorite"]           = true,
+    ["bluepower:marble"]            = true,
+    ["quark:smooth_basalt"]         = true,
+    ["quark:cobbled_deepslate"]     = true,
+    ["minecraft:netherrack"]        = true,
+    ["minecraft:blackstone"]        = true,
+    ["quark:cobbled_deepslate"]     = true,
+    ["quark:slate"]                 = true,
+    ["minecraft:magma_block"]       = true,
+    ["minecraft:nether_wart_block"] = true,
+    ["minecraft:warped_wart_block"] = true,
+    ["minecraft:basalt"]            = true,
+    ["minecraft:smooth_basalt"]     = true,
+    ["minecraft:cobbled_deepslate"] = true,
+    ["minecraft:soul_sand"]         = true,
+    ["minecraft:soul_soil"]         = true,
+    ["minecraft:tuff"]              = true,
+    ["minecraft:rail"]              = true,
+    ["create:scorchia"]             = true,
 }
 
 local oreDict = {
@@ -40,23 +57,26 @@ local closingBlockWish = "minecraft:cobblestone"
 local firstBlockDug
 
 local specialBlockDrops = {
-    ["minecraft:grass"]        = "minecraft:dirt",
-    ["minecraft:stone"]        = "minecraft:cobblestone",
-    ["quark:deepslate"]        = "quark:cobbled_deeplate",
-    ["minecraft:warped_nylum"] = "minecraft:netherrack"
+    ["minecraft:grass"]          = "minecraft:dirt",
+    ["minecraft:stone"]          = "minecraft:cobblestone",
+    ["quark:deepslate"]          = "quark:cobbled_deepslate",
+    ["minecraft:deepslate"]      = "minecraft:cobbled_deepslate",
+    ["minecraft:warped_nylium"]  = "minecraft:netherrack",
+    ["minecraft:crimson_nylium"] = "minecraft:netherrack"
 }
 -- If no special kind available, return the block searched for
 setmetatable(specialBlockDrops, {__index = function(_, key) return key end})
 
 local blockHeightMap = {}
+local lavaRefuelActive
 -- Variables --
 
 
 -- Functions --
 local function interrupt( msg, key )
-    term.setCursorPos( 1, 16 )
+    term.setCursorPos( 1, 13 )
     term.clearLine()
-    term.setCursorPos( 1, 16 )
+    term.setCursorPos( 1, 13 )
     term.write( msg )
 
     while true do
@@ -88,6 +108,24 @@ local function refuel( lvl, stop )
     return true, turtle.getSelectedSlot() ~= selSlot and turtle.select( selSlot )
 end
 
+local function doLavaRefuel(blockBelow)
+    lavaRefuelActive = lavaRefuelActive or turtle.getFuelLevel() < lavaRefuelLowerThreshold
+
+    if not lavaRefuelActive then
+        return
+    end
+
+    local prevSlot = turtle.getSelectedSlot()
+
+    if tlib.findAndSelect("minecraft:bucket") then
+        if blockBelow then turtle.placeDown() else turtle.place() end
+        turtle.refuel()
+        turtle.select(prevSlot)
+
+        lavaRefuelActive = turtle.getFuelLevel() < lavaRefuelUpperThreshold
+    end
+end
+
 local function goDown()
     while not turtle.down() do
         if not turtle.attackDown() then sleep(1) end
@@ -116,6 +154,11 @@ end
 
 local function isOre( isBlock, block )
     if not isBlock then
+        return false
+    end
+
+    if tryRefuelLava and block.name == "minecraft:lava" then
+        doLavaRefuel()
         return false
     end
 
@@ -199,6 +242,10 @@ local function selectTrashItem(trashItems, blockWish)
 end
 
 local function placeTrashItem(trashItems)
+    if not enableShaftRestoration then
+        return
+    end
+
     if preciseShaftRestoration and not blockHeightMap[prg.currHeight + 1] then
         return
     end
@@ -217,19 +264,22 @@ local function placeClosingBlock(closingBlock)
 end
 
 local function digDown()
-    if not firstBlockDug then
-        local blockPresent, block = turtle.inspectDown()
+    local blockPresent, block
 
-        if blockPresent then
-            firstBlockDug = specialBlockDrops[block.name]
-        end
+    if preciseShaftRestoration or tryRefuelLava or not firstBlockDug then
+        blockPresent, block = turtle.inspectDown()
+    end
+
+    if not firstBlockDug and blockPresent then
+        firstBlockDug = specialBlockDrops[block.name]
+    end
+
+    if tryRefuelLava and blockPresent and block.name == "minecraft:lava" then
+        doLavaRefuel(true)
     end
 
     if preciseShaftRestoration then
-        local isBlock, block = turtle.inspectDown()
-
-        if not isBlock or not turtle.digDown() then return false end
-
+        if not blockPresent or not turtle.digDown() then return false end
         blockHeightMap[prg.currHeight + 1] = specialBlockDrops[block.name]
     else
         return turtle.digDown()
